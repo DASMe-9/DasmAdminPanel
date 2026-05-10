@@ -25,6 +25,8 @@ import {
 
 import { clearSession, getSession, getUser, getUserDisplayName, isExpired } from '../utils/authStorage';
 
+const DASM_ADS_DASHBOARD_URL = 'https://dasme-ads-laravel.vercel.app/dashboard';
+
 export default function Layout({ title, children }: any) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -49,6 +51,7 @@ export default function Layout({ title, children }: any) {
       { name: 'شركاء النمو (Mr.20%)', href: '/growth-partners', icon: SparklesIcon },
       { name: 'الباقات والأسعار', href: '/subscriptions', icon: CreditCardIcon },
       { name: 'خصومات المؤسسين', href: '/subscriptions/founder-discounts', icon: GiftIcon },
+      { name: 'لوحة الإعلانات', href: DASM_ADS_DASHBOARD_URL, icon: MegaphoneIcon, external: true },
       { name: 'التقارير', href: '/reports', icon: ChartBarIcon },
       { name: 'الإعدادات', href: '/settings', icon: Cog6ToothIcon },
     ],
@@ -143,19 +146,37 @@ export default function Layout({ title, children }: any) {
       <nav className="flex-1 overflow-auto px-3 pb-4">
         <div className="space-y-1">
           {navigation.map((item) => {
-            const active = isActive(item.href);
+            const active = !item.external && isActive(item.href);
+            const linkClassName = [
+              'group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition',
+              active ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-700 hover:bg-gray-50',
+            ].join(' ');
+            const iconClassName = ['h-5 w-5', active ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'].join(' ');
+            if (item.external) {
+              return (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileOpen(false)}
+                  className={linkClassName}
+                  title={collapsed ? item.name : undefined}
+                >
+                  <item.icon className={iconClassName} />
+                  {!collapsed && <span className="truncate">{item.name}</span>}
+                </a>
+              );
+            }
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
-                className={[
-                  'group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition',
-                  active ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-700 hover:bg-gray-50',
-                ].join(' ')}
+                className={linkClassName}
                 title={collapsed ? item.name : undefined}
               >
-                <item.icon className={['h-5 w-5', active ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'].join(' ')} />
+                <item.icon className={iconClassName} />
                 {!collapsed && <span className="truncate">{item.name}</span>}
               </Link>
             );
