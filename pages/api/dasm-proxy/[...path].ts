@@ -30,6 +30,8 @@ function isPathAllowed(subPath: string, method: string): boolean {
   if (subPath.startsWith("admin/monitoring")) return method === "GET";
   if (subPath.startsWith("admin/live-auctions")) return method === "GET";
   if (subPath.startsWith("admin/auctions")) return method === "GET";
+  if (subPath.startsWith("admin/bids/events")) return method === "GET";
+  if (subPath.startsWith("admin/sessions")) return method === "GET";
 
   // الأنشطة والسجلات (قراءة فقط)
   if (subPath.startsWith("admin/platform-activities")) return method === "GET";
