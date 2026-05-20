@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import platformApi from "@/lib/platformApi";
 
 /**
- * يقيّد /dashboard على أدوار المنصة الإدارية (staff) فقط.
+ * يقيّد لوحة الإدارة القديمة على أدوار المنصة الإدارية (staff) فقط.
  * مراجعو الطابور دون دور staff يُوجَّهون إلى الكنترول روم.
  * التحقق النهائي للصلاحيات يبقى مسؤولية DASM-Platform (API).
  */
@@ -54,7 +54,7 @@ export default function AdminDashboardGate({
 
     if (!token) {
       router.replace(
-        "/auth/login?returnUrl=" + encodeURIComponent("/dashboard")
+        "/auth/login?returnUrl=" + encodeURIComponent("/admin/control-room")
       );
       return;
     }

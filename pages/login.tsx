@@ -91,7 +91,7 @@ function LegacySupabaseLogin() {
       return;
     }
 
-    router.push('/dashboard');
+    router.push('/admin/control-room');
   };
 
   return (
