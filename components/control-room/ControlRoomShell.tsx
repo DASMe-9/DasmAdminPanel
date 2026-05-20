@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -44,6 +44,8 @@ import {
   MessageSquare,
   Mail,
   ExternalLink,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { ControlRoomAccessLevel } from "./ControlRoomGate";
@@ -76,7 +78,6 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/admin/control-room/approval-requests", label: "طابور الموافقات", icon: ClipboardList },
       { href: "/admin/control-room/activities", label: "سجل الأنشطة", icon: Activity },
-      { href: "/admin/control-room/moderation", label: "الاعتدال", icon: Shield, fullOnly: true },
       { href: "/admin/control-room/smart-alerts", label: "التنبيهات الذكية", icon: AlertTriangle },
     ],
   },
@@ -84,7 +85,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "المستخدمون والصلاحيات",
     items: [
-      { href: "/admin/control-room/users", label: "إدارة المستخدمين", icon: Users, fullOnly: true },
+      { href: "/users", label: "إدارة المستخدمين", icon: Users, fullOnly: true },
       { href: `${DASM_BASE}/admin/users/status`, label: "حالة المستخدمين", icon: Activity, fullOnly: true, external: true },
       { href: `${DASM_BASE}/admin/venue-owners`, label: "ملاك المعارض", icon: Building, fullOnly: true, external: true },
       { href: `${DASM_BASE}/admin/groups`, label: "إدارة القروبات", icon: Users, fullOnly: true, external: true },
@@ -145,7 +146,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: "التقارير والإعدادات",
     items: [
       { href: DASM_ADS_DASHBOARD_URL, label: "لوحة الإعلانات", icon: TrendingUp, fullOnly: true, external: true },
-      { href: "/admin/control-room/reports", label: "التقارير", icon: BarChart2, fullOnly: true },
+      { href: "/reports", label: "التقارير", icon: BarChart2, fullOnly: true },
       { href: `${DASM_BASE}/similar-price-analysis`, label: "تحليل الأسعار المشابهة", icon: BarChart3, fullOnly: true, external: true },
       { href: `${DASM_BASE}/admin/security`, label: "مركز الأمان", icon: ShieldAlert, fullOnly: true, external: true },
       { href: `${DASM_BASE}/admin/regions`, label: "المناطق", icon: Settings, fullOnly: true, external: true },
@@ -162,6 +163,24 @@ export default function ControlRoomShell({ children, access }: Props) {
   const router = useRouter();
   const { user, isAdmin, isModerator, isOperator, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("dasm-admin-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const nextIsDark = stored ? stored === "dark" : prefersDark;
+    setIsDark(nextIsDark);
+    document.documentElement.classList.toggle("dark", nextIsDark);
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDark((current) => {
+      const next = !current;
+      localStorage.setItem("dasm-admin-theme", next ? "dark" : "light");
+      document.documentElement.classList.toggle("dark", next);
+      return next;
+    });
+  };
 
   const handleLogout = async () => {
     await logout({ redirectToLogin: true });
@@ -171,36 +190,36 @@ export default function ControlRoomShell({ children, access }: Props) {
     router.pathname === href || router.asPath === href;
 
   const roleBadge = isAdmin
-    ? { label: "أدمن", color: "bg-purple-100 text-purple-700" }
+    ? { label: "أدمن", color: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-200" }
     : isModerator
-    ? { label: "مشرف", color: "bg-blue-100 text-blue-700" }
+    ? { label: "مشرف", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200" }
     : isOperator
-    ? { label: "مشغّل", color: "bg-green-100 text-green-700" }
-    : { label: "مراجع", color: "bg-gray-100 text-gray-600" };
+    ? { label: "مشغّل", color: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-200" }
+    : { label: "مراجع", color: "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-300" };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* الشعار */}
-      <div className="px-4 py-5 border-b border-gray-100">
+      <div className="px-4 py-5 border-b border-gray-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
             <Zap className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="font-bold text-sm text-gray-900">الكنترول روم</p>
-            <p className="text-xs text-gray-400">داسم</p>
+            <p className="font-bold text-sm text-gray-900 dark:text-white">الكنترول روم</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500">داسم</p>
           </div>
         </div>
       </div>
 
       {/* المستخدم */}
-      <div className="px-4 py-3 border-b border-gray-100">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 shrink-0">
+          <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-slate-800 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-slate-200 shrink-0">
             {user?.first_name?.[0] ?? user?.name?.[0] ?? "U"}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
+            <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">
               {user?.first_name
                 ? `${user.first_name} ${user.last_name ?? ""}`.trim()
                 : user?.name ?? user?.email}
@@ -213,7 +232,7 @@ export default function ControlRoomShell({ children, access }: Props) {
       </div>
 
       {/* القائمة */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
         {NAV_GROUPS.map((group) => {
           const visibleItems = group.items.filter(
             (item) => !item.fullOnly || access === "full"
@@ -221,17 +240,14 @@ export default function ControlRoomShell({ children, access }: Props) {
           if (visibleItems.length === 0) return null;
           return (
             <div key={group.title}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">
-                {group.title}
-              </p>
               <ul className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const Icon = item.icon;
                   const active = !item.external && isActive(item.href);
                   const linkClass = `flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-sm transition ${
                     active
-                      ? "bg-blue-50 text-blue-700 font-medium"
-                      : "text-gray-700 hover:bg-gray-100"
+                      ? "bg-blue-50 text-blue-700 font-medium dark:bg-blue-500/15 dark:text-blue-200"
+                      : "text-gray-700 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
                   }`;
 
                   if (item.external) {
@@ -243,9 +259,9 @@ export default function ControlRoomShell({ children, access }: Props) {
                           rel="noopener noreferrer"
                           className={linkClass}
                         >
-                          <Icon className="w-4 h-4 shrink-0 text-gray-400" />
+                          <Icon className="w-4 h-4 shrink-0 text-gray-400 dark:text-slate-500" />
                           <span className="flex-1 truncate">{item.label}</span>
-                          <ExternalLink className="w-3 h-3 shrink-0 text-gray-300" />
+                          <ExternalLink className="w-3 h-3 shrink-0 text-gray-300 dark:text-slate-600" />
                         </a>
                       </li>
                     );
@@ -258,7 +274,7 @@ export default function ControlRoomShell({ children, access }: Props) {
                         onClick={() => setSidebarOpen(false)}
                         className={linkClass}
                       >
-                        <Icon className={`w-4 h-4 shrink-0 ${active ? "text-blue-600" : "text-gray-400"}`} />
+                        <Icon className={`w-4 h-4 shrink-0 ${active ? "text-blue-600 dark:text-blue-200" : "text-gray-400 dark:text-slate-500"}`} />
                         <span className="flex-1 truncate">{item.label}</span>
                         {item.badge && (
                           <span className="text-xs bg-red-500 text-white px-1.5 py-0.5 rounded-full">
@@ -276,11 +292,19 @@ export default function ControlRoomShell({ children, access }: Props) {
       </nav>
 
       {/* الأسفل */}
-      <div className="px-3 py-3 border-t border-gray-100 space-y-1">
+      <div className="px-3 py-3 border-t border-gray-100 dark:border-slate-800 space-y-1">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-700 hover:bg-gray-100 transition dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          {isDark ? "الوضع النهاري" : "الوضع الليلي"}
+        </button>
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-red-600 hover:bg-red-50 transition"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-red-600 hover:bg-red-50 transition dark:text-red-300 dark:hover:bg-red-500/10"
         >
           <LogOut className="w-4 h-4" />
           تسجيل خروج
@@ -290,9 +314,9 @@ export default function ControlRoomShell({ children, access }: Props) {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 rtl flex">
+    <div className="min-h-screen bg-gray-50 text-gray-950 rtl flex transition-colors dark:bg-slate-950 dark:text-slate-100">
       {/* Sidebar ديسكتوب */}
-      <aside className="hidden md:flex flex-col w-60 bg-white border-l border-gray-200 shrink-0 sticky top-0 h-screen overflow-hidden">
+      <aside className="hidden md:flex flex-col w-64 bg-white border-l border-gray-200 shrink-0 sticky top-0 h-screen overflow-hidden dark:bg-slate-900 dark:border-slate-800">
         <SidebarContent />
       </aside>
 
@@ -303,11 +327,11 @@ export default function ControlRoomShell({ children, access }: Props) {
             className="absolute inset-0 bg-black/40"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="absolute right-0 top-0 h-full w-64 bg-white shadow-xl z-50">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-              <span className="font-bold text-sm text-gray-900">القائمة</span>
+          <aside className="absolute right-0 top-0 h-full w-72 bg-white shadow-xl z-50 dark:bg-slate-900">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-slate-800">
+              <span className="font-bold text-sm text-gray-900 dark:text-white">القائمة</span>
               <button type="button" onClick={() => setSidebarOpen(false)}>
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-gray-500 dark:text-slate-400" />
               </button>
             </div>
             <SidebarContent />
@@ -318,19 +342,19 @@ export default function ControlRoomShell({ children, access }: Props) {
       {/* المحتوى الرئيسي */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* شريط علوي موبايل */}
-        <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-30">
+        <header className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-30 dark:bg-slate-900 dark:border-slate-800">
           <button type="button" onClick={() => setSidebarOpen(true)}>
-            <Menu className="w-5 h-5 text-gray-600" />
+            <Menu className="w-5 h-5 text-gray-600 dark:text-slate-300" />
           </button>
-          <span className="font-bold text-sm text-gray-900">الكنترول روم</span>
+          <span className="font-bold text-sm text-gray-900 dark:text-white">الكنترول روم</span>
           <div className="w-5" />
         </header>
 
         {/* breadcrumb */}
-        <div className="hidden md:flex items-center gap-1 px-6 py-3 text-xs text-gray-400 border-b border-gray-100 bg-white">
+        <div className="hidden md:flex items-center gap-1 px-6 py-3 text-xs text-gray-400 border-b border-gray-100 bg-white dark:bg-slate-950 dark:border-slate-800 dark:text-slate-500">
           <span>الكنترول روم</span>
           <ChevronLeft className="w-3 h-3" />
-          <span className="text-gray-600 font-medium">
+          <span className="text-gray-600 font-medium dark:text-slate-300">
             {NAV_GROUPS.flatMap((g) => g.items).find((i) => isActive(i.href))?.label ?? "الرئيسية"}
           </span>
         </div>

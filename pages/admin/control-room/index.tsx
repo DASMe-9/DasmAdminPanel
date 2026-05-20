@@ -77,7 +77,7 @@ function OverviewStats({ access }: { access: ControlRoomAccessLevel }) {
     { label: "موافقات معلقة", value: stats.pending_approvals, icon: ClipboardList, color: "text-blue-600 bg-blue-50", href: "/admin/control-room/approval-requests" },
     { label: "تنبيهات مفتوحة", value: stats.open_alerts, icon: AlertTriangle, color: "text-red-600 bg-red-50", href: "/admin/control-room/smart-alerts" },
     ...(access === "full" ? [
-      { label: "مستخدمون نشطون", value: stats.active_users, icon: Users, color: "text-purple-600 bg-purple-50", href: "/admin/control-room/users" },
+      { label: "مستخدمون نشطون", value: stats.active_users, icon: Users, color: "text-purple-600 bg-purple-50", href: "/users" },
       { label: "طلبات التجارة اليوم", value: stats.ecommerce_orders, icon: ShoppingBag, color: "text-indigo-600 bg-indigo-50", href: "/admin/control-room/ecommerce" },
     ] : []),
   ];
@@ -130,8 +130,8 @@ function QuickLinks({ access }: { access: ControlRoomAccessLevel }) {
     { href: "/admin/control-room/ecommerce", label: "المتاجر الإلكترونية", icon: ShoppingBag, desc: "مراقبة المتاجر والطلبات" },
     { href: "/admin/control-room/smart-alerts", label: "التنبيهات الذكية", icon: AlertTriangle, desc: "تحليل المخاطر والشذوذ" },
     ...(access === "full" ? [
-      { href: "/admin/control-room/reports", label: "التقارير", icon: TrendingUp, desc: "تقارير الأداء والمبيعات" },
-      { href: "/admin/control-room/users", label: "المستخدمون", icon: Users, desc: "إدارة المستخدمين والأدوار" },
+      { href: "/reports", label: "التقارير", icon: TrendingUp, desc: "تقارير الأداء والمبيعات" },
+      { href: "/users", label: "المستخدمون", icon: Users, desc: "إدارة المستخدمين والأدوار" },
     ] : []),
   ];
 

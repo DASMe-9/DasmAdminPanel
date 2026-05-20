@@ -35,7 +35,7 @@ export default function Layout({ title, children }: any) {
 
   const navigation = useMemo(
     () => [
-      { name: 'الرئيسية', href: '/dashboard', icon: HomeIcon },
+      { name: 'الكنترول روم', href: '/admin/control-room', icon: HomeIcon },
       { name: 'السيارات', href: '/cars', icon: TruckIcon },
       { name: 'إدارة السيارات', href: '/car-management', icon: WrenchScrewdriverIcon },
       { name: 'المستخدمين', href: '/users', icon: UserGroupIcon },
@@ -259,13 +259,6 @@ export default function Layout({ title, children }: any) {
                     <div className="text-xs text-gray-500 max-w-[200px] truncate">{user?.email || ''}</div>
                   </div>
                 </div>
-
-                <Link
-                  href="/admin/control-room"
-                  className="inline-flex items-center gap-2 rounded-2xl px-3 sm:px-4 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 transition"
-                >
-                  غرفة المعالجة
-                </Link>
 
                 <Link
                   href="/logout"

@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import { useAuth } from "@/hooks/useAuth";
 
 /**
- * نقطة الجذر: لا تعيد التوجيه إلى /dashboard.
+ * نقطة الجذر: لا تعيد التوجيه إلى لوحة قديمة.
  * غير مسجّل → /auth/login | مسجّل → الكنترول روم الرسمي.
  */
 export default function Home() {
@@ -24,7 +24,7 @@ export default function Home() {
       router.replace("/auth/login");
       return;
     }
-    router.replace("/dashboard");
+    router.replace("/admin/control-room");
   }, [hydrated, initialized, isLoggedIn, router]);
 
   return (
