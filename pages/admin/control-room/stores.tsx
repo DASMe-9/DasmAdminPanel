@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Store, Package, ShoppingCart, TrendingUp, Search,
-  RefreshCw, CheckCircle, XCircle, Clock, AlertTriangle,
-  Eye, Ban, BarChart2,
+  RefreshCw, CheckCircle, Clock, AlertTriangle,
+  Eye, Ban,
 } from "lucide-react";
 import ControlRoomGate, { type ControlRoomAccessLevel } from "@/components/control-room/ControlRoomGate";
 import ControlRoomShell from "@/components/control-room/ControlRoomShell";
@@ -12,43 +12,37 @@ type StoreRow = {
   name: string;
   name_ar?: string;
   slug: string;
-  category: string;
-  status: "active" | "suspended" | "pending" | "closed";
-  is_verified: boolean;
-  owner_id: number;
   owner_type: string;
+  status: "active" | "suspended" | "draft";
   products_count: number;
   orders_count: number;
   created_at: string;
+  owner?: { first_name: string; last_name: string; email: string };
 };
 
 type Stats = {
   total_stores: number;
-  active_stores: number;
-  pending_stores: number;
-  suspended_stores: number;
+  by_status?: { draft?: number; active?: number; suspended?: number };
+  total_orders: number;
   orders_today: number;
-  revenue_today: number;
+  total_revenue: number;
 };
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
-  active:    { label: "نشط",           color: "bg-green-100 text-green-700",  icon: CheckCircle },
-  pending:   { label: "قيد المراجعة", color: "bg-amber-100 text-amber-700",  icon: Clock },
-  suspended: { label: "موقوف",         color: "bg-red-100 text-red-700",      icon: Ban },
-  closed:    { label: "مغلق",          color: "bg-gray-100 text-gray-600",    icon: XCircle },
+  active:    { label: "نشط",    color: "bg-green-100 text-green-700",  icon: CheckCircle },
+  draft:     { label: "مسودة",  color: "bg-amber-100 text-amber-700",  icon: Clock },
+  suspended: { label: "موقوف",  color: "bg-red-100 text-red-700",      icon: Ban },
 };
 
 const OWNER_TYPE_MAP: Record<string, string> = {
   venue_owner: "معرض",
   dealer:      "تاجر",
   user:        "مستخدم",
-};
-
-const CATEGORY_MAP: Record<string, string> = {
-  cars:        "سيارات",
-  electronics: "إلكترونيات",
-  fashion:     "أزياء",
-  general:     "عام",
+  farmer:      "مزارع",
+  company:     "شركة",
+  ecommerce:   "تجارة إلكترونية",
+  workshop:    "ورشة",
+  investor:    "مستثمر",
 };
 
 function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
@@ -58,17 +52,26 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
   const [search, setSearch]       = useState("");
   const [statusFilter, setFilter] = useState("all");
   const [actionBusy, setBusy]     = useState<number | null>(null);
-  const [tab, setTab]             = useState<"all" | "pending">("all");
+  const [tab, setTab]             = useState<"all" | "draft">("all");
+
+  const authHeaders = (): Record<string, string> => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const headers = authHeaders();
       const [sRes, stRes] = await Promise.allSettled([
-        fetch(`/api/stores/list?status=${statusFilter}&search=${encodeURIComponent(search)}`).then(r => r.json()),
-        fetch("/api/stores/stats").then(r => r.json()),
+        fetch(`/api/stores/list?status=${statusFilter}&search=${encodeURIComponent(search)}`, { headers }).then(r => r.json()),
+        fetch("/api/stores/stats", { headers }).then(r => r.json()),
       ]);
-      if (sRes.status === "fulfilled" && sRes.value.success)  setStores(sRes.value.data ?? []);
-      if (stRes.status === "fulfilled" && stRes.value.success) setStats(stRes.value.data);
+      if (sRes.status === "fulfilled" && sRes.value.status === "success") {
+        const page = sRes.value.data;
+        setStores(Array.isArray(page) ? page : page?.data ?? []);
+      }
+      if (stRes.status === "fulfilled" && stRes.value.status === "success") setStats(stRes.value.data);
     } finally {
       setLoading(false);
     }
@@ -76,13 +79,14 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
 
   useEffect(() => { void load(); }, [load]);
 
-  const doAction = async (id: number, action: "suspend" | "activate" | "approve") => {
-    if (action === "suspend" && !confirm("تعليق المتجر؟")) return;
+  const doAction = async (id: number, action: "suspend" | "activate") => {
+    const label = action === "activate" ? "تفعيل" : "تعليق";
+    if (!confirm(`${label} المتجر؟`)) return;
     setBusy(id);
     try {
       await fetch("/api/stores/action", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ storeId: id, action }),
       });
       void load();
@@ -92,7 +96,7 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
   };
 
   const displayed = stores.filter(s =>
-    tab === "pending" ? s.status === "pending" : true
+    tab === "draft" ? s.status === "draft" : true
   );
 
   return (
@@ -118,12 +122,12 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {[
-            { label: "إجمالي المتاجر",   value: stats.total_stores,     icon: Store,        color: "text-gray-600   bg-gray-100"   },
-            { label: "نشطة",             value: stats.active_stores,    icon: CheckCircle,  color: "text-green-600  bg-green-50"   },
-            { label: "قيد المراجعة",     value: stats.pending_stores,   icon: Clock,        color: "text-amber-600  bg-amber-50"   },
-            { label: "موقوفة",           value: stats.suspended_stores, icon: Ban,          color: "text-red-600    bg-red-50"     },
-            { label: "طلبات اليوم",      value: stats.orders_today,     icon: ShoppingCart, color: "text-blue-600   bg-blue-50"    },
-            { label: "إيرادات اليوم",    value: `${(stats.revenue_today/1000).toFixed(1)}k ر.س`, icon: TrendingUp, color: "text-purple-600 bg-purple-50" },
+            { label: "إجمالي المتاجر",   value: stats.total_stores,            icon: Store,        color: "text-gray-600 bg-gray-100"   },
+            { label: "نشطة",             value: stats.by_status?.active ?? 0,        icon: CheckCircle,  color: "text-green-600 bg-green-50"  },
+            { label: "مسودة",            value: stats.by_status?.draft ?? 0,         icon: Clock,        color: "text-amber-600 bg-amber-50"  },
+            { label: "موقوفة",           value: stats.by_status?.suspended ?? 0,     icon: Ban,          color: "text-red-600 bg-red-50"      },
+            { label: "طلبات اليوم",      value: stats.orders_today,            icon: ShoppingCart, color: "text-blue-600 bg-blue-50"    },
+            { label: "إجمالي الإيرادات", value: `${((stats.total_revenue ?? 0)/1000).toFixed(1)}k ر.س`, icon: TrendingUp, color: "text-purple-600 bg-purple-50" },
           ].map(c => (
             <div key={c.label} className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${c.color}`}>
@@ -136,16 +140,16 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
         </div>
       )}
 
-      {/* Pending Alert */}
-      {stats && stats.pending_stores > 0 && (
+      {/* Draft Alert */}
+      {stats && (stats.by_status?.draft ?? 0) > 0 && (
         <div
           role="button"
-          onClick={() => setTab("pending")}
+          onClick={() => setTab("draft")}
           className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 cursor-pointer hover:bg-amber-100 transition"
         >
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
           <p className="text-sm text-amber-800 font-medium">
-            {stats.pending_stores} متجر بانتظار المراجعة والقبول — اضغط للعرض
+            {stats.by_status?.draft ?? 0} متجر مسودة بانتظار التفعيل — اضغط للعرض
           </p>
         </div>
       )}
@@ -153,12 +157,12 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
       {/* Tabs + Filters */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2">
-          {(["all", "pending"] as const).map(t => (
+          {(["all", "draft"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${
                 tab === t ? "bg-gray-900 text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
               }`}>
-              {t === "all" ? "الكل" : "قيد المراجعة"}
+              {t === "all" ? "الكل" : "مسودة"}
             </button>
           ))}
         </div>
@@ -173,7 +177,7 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
             className="px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none">
             <option value="all">كل الحالات</option>
             <option value="active">نشط</option>
-            <option value="pending">قيد المراجعة</option>
+            <option value="draft">مسودة</option>
             <option value="suspended">موقوف</option>
           </select>
           <span className="text-xs text-gray-400">{displayed.length} متجر</span>
@@ -201,7 +205,6 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
                 <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500">
                   <th className="px-4 py-3 text-right font-medium">المتجر</th>
                   <th className="px-4 py-3 text-right font-medium">نوع المالك</th>
-                  <th className="px-4 py-3 text-right font-medium">الفئة</th>
                   <th className="px-4 py-3 text-right font-medium">الحالة</th>
                   <th className="px-4 py-3 text-right font-medium">المنتجات</th>
                   <th className="px-4 py-3 text-right font-medium">الطلبات</th>
@@ -211,7 +214,7 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {displayed.map(store => {
-                  const s = STATUS_MAP[store.status] ?? STATUS_MAP.closed;
+                  const s = STATUS_MAP[store.status] ?? STATUS_MAP.draft;
                   const Icon = s.icon;
                   return (
                     <tr key={store.id} className="hover:bg-gray-50 transition">
@@ -224,16 +227,10 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
                             <p className="font-semibold text-gray-900">{store.name}</p>
                             <p className="text-xs text-gray-400">/{store.slug}</p>
                           </div>
-                          {store.is_verified && (
-                            <CheckCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-gray-600">
                         {OWNER_TYPE_MAP[store.owner_type] ?? store.owner_type}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {CATEGORY_MAP[store.category] ?? store.category}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${s.color}`}>
@@ -259,11 +256,11 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
                       {access === "full" && (
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
-                            {store.status === "pending" && (
-                              <button onClick={() => doAction(store.id, "approve")}
+                            {store.status === "draft" && (
+                              <button onClick={() => doAction(store.id, "activate")}
                                 disabled={actionBusy === store.id}
                                 className="text-xs px-2 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition disabled:opacity-50">
-                                قبول
+                                تفعيل
                               </button>
                             )}
                             {store.status === "active" && (

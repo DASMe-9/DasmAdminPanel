@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 /**
- * POST /api/stores/action — { storeId, action: "suspend" | "activate" | "approve" }
+ * POST /api/stores/action — { storeId, action: "suspend" | "activate" }
  * يمر عبر DASM API بدل Supabase المباشر (SAMA compliance).
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
