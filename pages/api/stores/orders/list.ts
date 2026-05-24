@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!base) return res.status(500).json({ message: "تكوين خادم المنصة غير مكتمل" });
 
   const params = new URLSearchParams();
-  for (const key of ["status", "payment_status", "store_id", "search", "from", "to", "page", "per_page"] as const) {
+  for (const key of ["status", "payment_status", "store_id", "search", "from", "to", "page", "per_page", "channel"] as const) {
     const v = req.query[key];
     if (v && typeof v === "string") params.set(key, v);
   }

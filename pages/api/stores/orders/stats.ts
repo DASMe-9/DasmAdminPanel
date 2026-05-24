@@ -11,7 +11,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!base) return res.status(500).json({ message: "تكوين خادم المنصة غير مكتمل" });
 
   try {
-    const response = await fetch(`${base.replace(/\/$/, "")}/api/admin/store-orders/stats`, {
+    const params = new URLSearchParams();
+    const channel = req.query.channel;
+    if (channel && typeof channel === "string") params.set("channel", channel);
+
+    const url = `${base.replace(/\/$/, "")}/api/admin/store-orders/stats${params.toString() ? `?${params}` : ""}`;
+    const response = await fetch(url, {
       method: "GET",
       headers: { Accept: "application/json", Authorization: auth },
     });

@@ -13,8 +13,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const id = req.query.id;
   if (!id || Array.isArray(id)) return res.status(400).json({ message: "معرّف الطلب مطلوب" });
 
+  const channel = req.query.channel;
+  const channelQuery = channel && typeof channel === "string" ? `?channel=${encodeURIComponent(channel)}` : "";
+
   try {
-    const response = await fetch(`${base.replace(/\/$/, "")}/api/admin/store-orders/${id}`, {
+    const response = await fetch(`${base.replace(/\/$/, "")}/api/admin/store-orders/${id}${channelQuery}`, {
       method: "GET",
       headers: { Accept: "application/json", Authorization: auth },
     });

@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   X,
   Store,
+  Truck,
 } from "lucide-react";
 import ControlRoomGate, { type ControlRoomAccessLevel } from "@/components/control-room/ControlRoomGate";
 import ControlRoomShell from "@/components/control-room/ControlRoomShell";
@@ -18,8 +19,11 @@ import CrPageHeader from "@/components/control-room/CrPageHeader";
 import CrKpiCard from "@/components/control-room/CrKpiCard";
 import CrStatusPill from "@/components/control-room/CrStatusPill";
 
+type OrderChannel = "store" | "shipping";
+
 type OrderRow = {
   id: number;
+  channel?: OrderChannel;
   order_number: string;
   customer_name: string;
   customer_phone: string;
@@ -28,7 +32,15 @@ type OrderRow = {
   payment_status: string;
   total: string | number;
   created_at: string;
+  read_only?: boolean;
   store?: { id: number; name: string; name_ar?: string; slug: string; status?: string };
+  shipping?: {
+    provider_code?: string;
+    service_name?: string;
+    tracking_number?: string;
+    entity_type?: string;
+    entity_id?: number;
+  };
 };
 
 type OrderStats = {
@@ -37,6 +49,9 @@ type OrderStats = {
   paid_count: number;
   pending_payment: number;
   paid_revenue: number;
+  store_orders?: number;
+  shipping_orders?: number;
+  shipping_revenue?: number;
 };
 
 type Paginated = {
@@ -55,12 +70,35 @@ const ORDER_STATUS: Record<string, string> = {
   cancelled: "ملغي",
 };
 
+const CHANNEL_LABEL: Record<OrderChannel, string> = {
+  store: "متجر",
+  shipping: "شحن",
+};
+
+const SHIPPING_STATUS: Record<string, string> = {
+  pending: "بانتظار الحجز",
+  booked: "محجوز",
+  picked_up: "تم الاستلام",
+  in_transit: "في الطريق",
+  out_for_delivery: "خارج للتسليم",
+  delivered: "تم التسليم",
+  returned: "مرتجع",
+  cancelled: "ملغي",
+};
+
 const PAYMENT_STATUS: Record<string, { label: string; tone: "warning" | "ok" | "live" | "muted" }> = {
   pending: { label: "بانتظار الدفع", tone: "warning" },
   paid: { label: "مدفوع", tone: "ok" },
   failed: { label: "فشل", tone: "live" },
   refunded: { label: "مسترد", tone: "muted" },
 };
+
+function statusLabel(order: OrderRow) {
+  if (order.channel === "shipping") {
+    return SHIPPING_STATUS[order.status] ?? order.status;
+  }
+  return ORDER_STATUS[order.status] ?? order.status;
+}
 
 function formatSar(v: string | number) {
   const n = typeof v === "string" ? parseFloat(v) : v;
@@ -85,7 +123,9 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ last_page: 1, total: 0 });
+  const [channelFilter, setChannelFilter] = useState<"all" | OrderChannel>("all");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<OrderChannel>("store");
   const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [statusDraft, setStatusDraft] = useState("");
@@ -102,14 +142,14 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
     setLoading(true);
     try {
       const headers = authHeaders();
-      const params = new URLSearchParams({ page: String(page), per_page: "25" });
+      const params = new URLSearchParams({ page: String(page), per_page: "25", channel: channelFilter });
       if (search) params.set("search", search);
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (paymentFilter !== "all") params.set("payment_status", paymentFilter);
 
       const [listRes, statsRes] = await Promise.allSettled([
         fetch(`/api/stores/orders/list?${params}`, { headers }).then((r) => r.json()),
-        fetch("/api/stores/orders/stats", { headers }).then((r) => r.json()),
+        fetch(`/api/stores/orders/stats?channel=${channelFilter}`, { headers }).then((r) => r.json()),
       ]);
 
       if (listRes.status === "fulfilled" && listRes.value.status === "success") {
@@ -123,20 +163,21 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
     } finally {
       setLoading(false);
     }
-  }, [page, search, statusFilter, paymentFilter]);
+  }, [page, search, statusFilter, paymentFilter, channelFilter]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const openDetail = async (id: number) => {
+  const openDetail = async (id: number, channel: OrderChannel = "store") => {
     setSelectedId(id);
+    setSelectedChannel(channel);
     setDetailLoading(true);
     setDetail(null);
     setStatusError(null);
     setStatusNote("");
     try {
-      const res = await fetch(`/api/stores/orders/${id}`, { headers: authHeaders() });
+      const res = await fetch(`/api/stores/orders/${id}?channel=${channel}`, { headers: authHeaders() });
       const json = await res.json();
       if (json.status === "success") {
         setDetail(json.data);
@@ -148,7 +189,7 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
   };
 
   const saveStatus = async () => {
-    if (!selectedId || !canUpdateStatus) return;
+    if (!selectedId || !canUpdateStatus || selectedChannel !== "store") return;
     setStatusSaving(true);
     setStatusError(null);
     try {
@@ -182,8 +223,8 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
     <div className="space-y-6 max-w-7xl">
       <CrPageHeader
         icon={ShoppingCart}
-        title="طلبات المتاجر"
-        subtitle="لوحة موحّدة — طلبات store.dasm.com.sa (Phase 1.1: تحديث الحالة + سجل تدقيق)"
+        title="طلبات موحّدة"
+        subtitle="متاجر داسم + شحن (M1.2) — قراءة موحّدة مع تحديث حالة طلبات المتاجر فقط"
         actions={
           <div className="flex items-center gap-2">
             <Link
@@ -207,14 +248,21 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
       />
 
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           <CrKpiCard title="إجمالي الطلبات" value={stats.total_orders} icon={Package} tone="indigo" loading={loading} />
           <CrKpiCard title="اليوم" value={stats.orders_today} icon={Clock} tone="blue" loading={loading} />
-          <CrKpiCard title="مدفوعة" value={stats.paid_count} icon={CreditCard} tone="emerald" loading={loading} />
-          <CrKpiCard title="بانتظار الدفع" value={stats.pending_payment} icon={ShoppingCart} tone="amber" loading={loading} />
+          {channelFilter !== "shipping" && (
+            <CrKpiCard title="متاجر — مدفوعة" value={stats.paid_count} icon={CreditCard} tone="emerald" loading={loading} />
+          )}
+          {channelFilter !== "shipping" && (
+            <CrKpiCard title="بانتظار الدفع" value={stats.pending_payment} icon={ShoppingCart} tone="amber" loading={loading} />
+          )}
+          {channelFilter !== "store" && typeof stats.shipping_orders === "number" && (
+            <CrKpiCard title="طلبات شحن" value={stats.shipping_orders} icon={Truck} tone="blue" loading={loading} />
+          )}
           <CrKpiCard
-            title="إيراد مدفوع"
-            value={formatSar(stats.paid_revenue)}
+            title={channelFilter === "shipping" ? "إيراد الشحن" : "إيراد مدفوع"}
+            value={formatSar(channelFilter === "shipping" ? (stats.shipping_revenue ?? stats.paid_revenue) : stats.paid_revenue)}
             icon={TrendingUp}
             tone="purple"
             loading={loading}
@@ -223,6 +271,19 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
       )}
 
       <div className="cr-filter-bar">
+        <select
+          value={channelFilter}
+          onChange={(e) => {
+            setChannelFilter(e.target.value as "all" | OrderChannel);
+            setPage(1);
+          }}
+          aria-label="مصدر الطلب"
+          className="px-3 py-2 rounded-xl border border-slate-200 text-sm dark:border-slate-700 dark:bg-slate-900"
+        >
+          <option value="all">كل المصادر</option>
+          <option value="store">متاجر داسم</option>
+          <option value="shipping">شحن</option>
+        </select>
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -283,11 +344,12 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
             لا توجد طلبات مطابقة — أو لم يُسجَّل أي طلب بعد على المتاجر
           </div>
         ) : (
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[980px] text-sm">
             <thead className="cr-table-head">
               <tr>
+                <th className="px-4 py-3 text-right font-semibold">المصدر</th>
                 <th className="px-4 py-3 text-right font-semibold">رقم الطلب</th>
-                <th className="px-4 py-3 text-right font-semibold">المتجر</th>
+                <th className="px-4 py-3 text-right font-semibold">المتجر / الناقل</th>
                 <th className="px-4 py-3 text-right font-semibold">العميل</th>
                 <th className="px-4 py-3 text-right font-semibold">الحالة</th>
                 <th className="px-4 py-3 text-right font-semibold">الدفع</th>
@@ -297,26 +359,38 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
             </thead>
             <tbody>
               {orders.map((order) => {
+                const channel = order.channel ?? "store";
                 const pay = PAYMENT_STATUS[order.payment_status] ?? { label: order.payment_status, tone: "muted" as const };
                 return (
                   <tr
-                    key={order.id}
+                    key={`${channel}-${order.id}`}
                     className="cr-table-row cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
-                    onClick={() => void openDetail(order.id)}
+                    onClick={() => void openDetail(order.id, channel)}
                   >
+                    <td className="px-4 py-3">
+                      <CrStatusPill tone={channel === "shipping" ? "info" : "ok"}>
+                        {CHANNEL_LABEL[channel]}
+                      </CrStatusPill>
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                       {order.order_number}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-slate-900 dark:text-white">{order.store?.name ?? "—"}</p>
-                      {order.store?.slug ? <p className="text-xs text-slate-400">/{order.store.slug}</p> : null}
+                      <p className="font-medium text-slate-900 dark:text-white">
+                        {channel === "store" ? order.store?.name ?? "—" : order.shipping?.provider_code ?? "شحن داسم"}
+                      </p>
+                      {channel === "store" && order.store?.slug ? (
+                        <p className="text-xs text-slate-400">/{order.store.slug}</p>
+                      ) : order.shipping?.tracking_number ? (
+                        <p className="text-xs text-slate-400 font-mono">{order.shipping.tracking_number}</p>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3">
                       <p>{order.customer_name}</p>
                       <p className="text-xs text-slate-400">{order.customer_phone}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <CrStatusPill tone="info">{ORDER_STATUS[order.status] ?? order.status}</CrStatusPill>
+                      <CrStatusPill tone="info">{statusLabel(order)}</CrStatusPill>
                     </td>
                     <td className="px-4 py-3">
                       <CrStatusPill tone={pay.tone}>{pay.label}</CrStatusPill>
@@ -377,8 +451,19 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
             ) : detail ? (
               <div className="space-y-4 text-sm">
                 <p>
+                  <span className="text-slate-500">المصدر:</span>{" "}
+                  {CHANNEL_LABEL[(detail.channel as OrderChannel) ?? selectedChannel]}
+                </p>
+                <p>
                   <span className="text-slate-500">رقم الطلب:</span>{" "}
                   <span className="font-mono font-semibold">{String(detail.order_number)}</span>
+                </p>
+                <p>
+                  <span className="text-slate-500">الحالة:</span>{" "}
+                  {statusLabel({
+                    channel: (detail.channel as OrderChannel) ?? selectedChannel,
+                    status: String(detail.status),
+                  } as OrderRow)}
                 </p>
                 <p>
                   <span className="text-slate-500">الإجمالي:</span> {formatSar(detail.total as string | number)}
@@ -386,6 +471,28 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
                 <p>
                   <span className="text-slate-500">العميل:</span> {String(detail.customer_name)} — {String(detail.customer_phone)}
                 </p>
+                {selectedChannel === "shipping" && (
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-1">
+                    <p className="font-semibold">تفاصيل الشحن</p>
+                    {detail.provider_code ? <p>الناقل: {String(detail.provider_code)}</p> : null}
+                    {detail.service_name ? <p>الخدمة: {String(detail.service_name)}</p> : null}
+                    {detail.tracking_number ? (
+                      <p>
+                        التتبع: <span className="font-mono">{String(detail.tracking_number)}</span>
+                      </p>
+                    ) : null}
+                    {detail.entity_type ? (
+                      <p>
+                        مرتبط بـ: {String(detail.entity_type)} #{String(detail.entity_id ?? "—")}
+                      </p>
+                    ) : null}
+                    {detail.label_url ? (
+                      <a href={String(detail.label_url)} target="_blank" rel="noreferrer" className="text-emerald-600 underline text-xs">
+                        بوليصة الشحن
+                      </a>
+                    ) : null}
+                  </div>
+                )}
                 {Array.isArray(detail.items) && detail.items.length > 0 && (
                   <div>
                     <p className="font-semibold mb-2">البنود</p>
@@ -401,7 +508,7 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
                     </ul>
                   </div>
                 )}
-                {canUpdateStatus && (
+                {canUpdateStatus && selectedChannel === "store" && !detail.read_only && (
                   <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-2">
                     <p className="font-semibold text-sm">تحديث الحالة</p>
                     <select
