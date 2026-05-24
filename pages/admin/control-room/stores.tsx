@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Store,
   Package,
@@ -65,6 +66,14 @@ const OWNER_TYPE_MAP: Record<string, string> = {
 
 const QUICK_LINKS = [
   {
+    label: "طلبات المتاجر",
+    desc: "لوحة موحّدة — Control Room",
+    href: "/admin/control-room/store-orders",
+    icon: ShoppingCart,
+    tone: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-200",
+    internal: true,
+  },
+  {
     label: "استكشاف المتاجر",
     desc: "واجهة العملاء العامة",
     href: INTERNAL_LINKS.storesExplore,
@@ -108,6 +117,11 @@ const ECOSYSTEM = [
   {
     title: "الدفع والتسوية",
     body: "Paymob + محفظة داسم — لا WordPress ولا WooCommerce.",
+    status: "live" as const,
+  },
+  {
+    title: "لوحة طلبات موحّدة",
+    body: "كل طلبات المتاجر في الكنترول روم — قراءة، فلترة، KPIs (Phase 1).",
     status: "live" as const,
   },
   {
@@ -192,23 +206,32 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
 
       <section className="cr-panel">
         <p className="cr-section-title mb-3">اختصارات تشغيلية</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
           {QUICK_LINKS.map((link) => {
             const Icon = link.icon;
-            return (
-              <a
-                key={link.href}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`cr-quick-link flex-col items-start gap-1 !py-3 ${link.tone}`}
-              >
+            const inner = (
+              <>
                 <span className="flex items-center gap-2 font-bold">
                   <Icon className="h-4 w-4" />
                   {link.label}
-                  <ExternalLink className="h-3 w-3 opacity-60" />
+                  {"internal" in link && link.internal ? null : (
+                    <ExternalLink className="h-3 w-3 opacity-60" />
+                  )}
                 </span>
                 <span className="text-xs opacity-80">{link.desc}</span>
+              </>
+            );
+            const className = `cr-quick-link flex-col items-start gap-1 !py-3 ${link.tone}`;
+            if ("internal" in link && link.internal) {
+              return (
+                <Link key={link.href} href={link.href} className={className}>
+                  {inner}
+                </Link>
+              );
+            }
+            return (
+              <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className={className}>
+                {inner}
               </a>
             );
           })}
