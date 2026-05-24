@@ -58,6 +58,26 @@ type Stats = {
   salla_connected?: number;
 };
 
+type ImportReadinessData = {
+  shopify_configured: boolean;
+  salla_configured: boolean;
+  salla_webhook_configured: boolean;
+  schema: {
+    track_stock?: boolean;
+    store_import_connections?: boolean;
+    store_pos_integrations?: boolean;
+  };
+  cheerlylife?: { id: number; slug: string; status: string; owner_type?: string } | null;
+  pilot_store?: {
+    id: number;
+    slug: string;
+    status: string;
+    owner_type?: string;
+    products_count?: number;
+    import_summary?: ImportSummary[];
+  } | null;
+};
+
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   active: { label: "نشط", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200", icon: CheckCircle },
   draft: { label: "مسودة", color: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200", icon: Clock },
@@ -170,14 +190,23 @@ const ECOSYSTEM = [
   },
   {
     title: "استيراد Salla / Shopify",
-    body: "OAuth + استيراد منتجات — Salla live؛ Shopify لاحقاً (M4).",
+    body: "OAuth + استيراد — Salla لمعارض القطع؛ Shopify لـ Cheerly (مسارات منفصلة).",
     status: "live" as const,
   },
 ];
 
+function readinessFlag(ok: boolean): string {
+  return ok
+    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200"
+    : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200";
+}
+
 function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
   const [stores, setStores] = useState<StoreRow[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [readiness, setReadiness] = useState<ImportReadinessData | null>(null);
+  const [pilotSlug, setPilotSlug] = useState("");
+  const [readinessLoading, setReadinessLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setFilter] = useState("all");
@@ -188,6 +217,19 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
     const t = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     return t ? { Authorization: `Bearer ${t}` } : {};
   };
+
+  const loadReadiness = useCallback(async (slug?: string) => {
+    setReadinessLoading(true);
+    try {
+      const headers = authHeaders();
+      const q = slug?.trim() ? `?slug=${encodeURIComponent(slug.trim())}` : "";
+      const res = await fetch(`/api/stores/import-readiness${q}`, { headers });
+      const json = await res.json();
+      if (json.status === "success") setReadiness(json.data as ImportReadinessData);
+    } finally {
+      setReadinessLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -209,7 +251,8 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadReadiness();
+  }, [load, loadReadiness]);
 
   const doAction = async (id: number, action: "suspend" | "activate") => {
     const label = action === "activate" ? "تفعيل" : "تعليق";
@@ -238,7 +281,10 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
         actions={
           <button
             type="button"
-            onClick={() => void load()}
+            onClick={() => {
+              void load();
+              void loadReadiness(pilotSlug);
+            }}
             disabled={loading}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
           >
@@ -307,6 +353,89 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
           />
         </div>
       )}
+
+      <section className="cr-panel">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-indigo-600" />
+            <p className="cr-section-title mb-0">جاهزية الاستيراد (Salla / Shopify)</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={pilotSlug}
+              onChange={(e) => setPilotSlug(e.target.value)}
+              placeholder="slug معرض pilot (مثل alnoor-parts)"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900"
+              dir="ltr"
+            />
+            <button
+              type="button"
+              onClick={() => void loadReadiness(pilotSlug)}
+              disabled={readinessLoading}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            >
+              تحقق
+            </button>
+          </div>
+        </div>
+        {readinessLoading && !readiness ? (
+          <p className="text-sm text-slate-500">جاري التحقق…</p>
+        ) : readiness ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${readinessFlag(readiness.salla_configured)}`}>
+                Salla {readiness.salla_configured ? "مهيّأ" : "غير مهيّأ"}
+              </span>
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${readinessFlag(readiness.salla_webhook_configured)}`}>
+                Webhook Salla {readiness.salla_webhook_configured ? "✓" : "—"}
+              </span>
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${readinessFlag(readiness.shopify_configured)}`}>
+                Shopify {readiness.shopify_configured ? "مهيّأ" : "غير مهيّأ"}
+              </span>
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${readinessFlag(!!readiness.schema?.store_import_connections)}`}>
+                Schema import
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                <p className="font-bold text-slate-800 dark:text-slate-100 mb-1">Cheerly (`cheerlylife`)</p>
+                {readiness.cheerlylife ? (
+                  <p className="text-slate-600 dark:text-slate-300">
+                    #{readiness.cheerlylife.id} — {readiness.cheerlylife.status}
+                  </p>
+                ) : (
+                  <p className="text-amber-700 dark:text-amber-300">غير موجود — مسار Shopify منفصل</p>
+                )}
+              </div>
+              <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                <p className="font-bold text-slate-800 dark:text-slate-100 mb-1">معرض pilot (Salla)</p>
+                {readiness.pilot_store ? (
+                  <>
+                    <p className="text-slate-600 dark:text-slate-300">
+                      {readiness.pilot_store.slug} — {readiness.pilot_store.status} — {readiness.pilot_store.products_count ?? 0} منتج
+                    </p>
+                    {readiness.pilot_store.import_summary?.map((row) => (
+                      <p key={row.provider} className="text-xs text-slate-500 mt-1">
+                        {row.provider}: {row.connected ? "متصل" : "غير متصل"}
+                      </p>
+                    ))}
+                  </>
+                ) : pilotSlug.trim() ? (
+                  <p className="text-amber-700 dark:text-amber-300">slug غير موجود بعد</p>
+                ) : (
+                  <p className="text-slate-500">أدخل slug معرض قطع غيار للتحقق</p>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">
+              Salla لمعارض القطع/الإكسسوارات — Cheerly Shopify فقط. لا خلط بين المسارين.
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">اضغط تحديث أو تحقق لعرض الحالة.</p>
+        )}
+      </section>
 
       <section className="cr-panel">
         <div className="flex items-center gap-2 mb-3">
