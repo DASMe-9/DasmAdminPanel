@@ -85,7 +85,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "المستخدمون والصلاحيات",
     items: [
-      { href: "/users", label: "إدارة المستخدمين", icon: Users, fullOnly: true },
+      { href: "/admin/control-room/users", label: "إدارة المستخدمين", icon: Users, fullOnly: true },
       { href: `${DASM_BASE}/admin/users/status`, label: "حالة المستخدمين", icon: Activity, fullOnly: true, external: true },
       { href: `${DASM_BASE}/admin/venue-owners`, label: "ملاك المعارض", icon: Building, fullOnly: true, external: true },
       { href: `${DASM_BASE}/admin/groups`, label: "إدارة القروبات", icon: Users, fullOnly: true, external: true },
