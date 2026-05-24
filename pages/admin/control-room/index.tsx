@@ -229,7 +229,7 @@ function QuickLinks({ access }: { access: ControlRoomAccessLevel }) {
     { href: "/admin/control-room/approval-requests", label: "طابور الموافقات", icon: ClipboardList, desc: "حسابات تجارية وطلبات الصلاحيات" },
     { href: "/admin/control-room/kyc-review", label: "مراجعة KYC", icon: UserCog, desc: "توثيق التجار وأصحاب المعارض" },
     { href: "/admin/control-room/activities", label: "سجل الأنشطة", icon: Activity, desc: "أنشطة المنصات المرتبطة" },
-    { href: "/admin/control-room/ecommerce", label: "المتاجر الإلكترونية", icon: ShoppingBag, desc: "مراقبة المتاجر والطلبات" },
+    { href: "/admin/control-room/stores", label: "المتاجر الإلكترونية", icon: ShoppingBag, desc: "ربط وإدارة متاجر store.dasm.com.sa" },
     { href: "/admin/control-room/smart-alerts", label: "التنبيهات الذكية", icon: AlertTriangle, desc: "تحليل المخاطر والشذوذ" },
     ...(access === "full" ? [
       { href: "/reports", label: "التقارير", icon: TrendingUp, desc: "تقارير الأداء والمبيعات" },
