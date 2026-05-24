@@ -14,7 +14,7 @@ export default function Home() {
   const {
     hydrated,
     initialized,
-    loading,
+    isLoading,
     isLoggedIn,
     token,
     user,
@@ -60,7 +60,7 @@ export default function Home() {
 
     // توكن بدون بروفايل: انتظر أو نظّف الجلسة
     if (!user) {
-      if (loading) return;
+      if (isLoading) return;
       void logout({ skipRequest: true, redirectToLogin: true });
       return;
     }
@@ -77,7 +77,7 @@ export default function Home() {
     hasSsoToken,
     hydrated,
     initialized,
-    loading,
+    isLoading,
     token,
     isLoggedIn,
     user,

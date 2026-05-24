@@ -23,7 +23,7 @@ export default function ControlRoomGate({ children }: ControlRoomGateProps) {
   const {
     hydrated,
     initialized,
-    loading,
+    isLoading,
     token,
     user,
     isAdmin,
@@ -41,7 +41,7 @@ export default function ControlRoomGate({ children }: ControlRoomGateProps) {
     if (!hydrated || !initialized) return;
 
     // انتظر انتهاء جلب البروفايل قبل أي قرار (تجنّب 403 مؤقت لطاقم staff)
-    if (token && !user && loading) return;
+    if (token && !user && isLoading) return;
 
     // توكن بدون بروفايل بعد التهيئة = جلسة منتهية أو تالفة
     if (token && !user) {
@@ -109,7 +109,7 @@ export default function ControlRoomGate({ children }: ControlRoomGateProps) {
   }, [
     hydrated,
     initialized,
-    loading,
+    isLoading,
     user,
     isFullStaff,
     isOperator,
