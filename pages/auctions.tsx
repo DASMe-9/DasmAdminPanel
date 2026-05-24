@@ -192,7 +192,7 @@ function toRow(a: AuctionApi): Row {
   };
 }
 
-export default function Auctions() {
+export function AuctionsPanel() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -379,7 +379,6 @@ export default function Auctions() {
   const pageTo = (page - 1) * perPage + rows.length;
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50/60 p-4 sm:p-6 lg:p-8" dir="rtl">
         <div className="mx-auto max-w-7xl space-y-6">
           {/* Header */}
@@ -891,6 +890,13 @@ export default function Auctions() {
           </div>
         )}
       </div>
+  );
+}
+
+export default function Auctions() {
+  return (
+    <Layout>
+      <AuctionsPanel />
     </Layout>
   );
 }

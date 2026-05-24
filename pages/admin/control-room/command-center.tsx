@@ -100,6 +100,8 @@ function CommandCenterBody() {
               <div className="space-y-2 text-xs">
                 {[
                   { href: "/admin/control-room/monitoring", label: "📡 المراقبة الحية" },
+                  { href: "/admin/control-room/auctions", label: "⚖️ إدارة المزادات" },
+                  { href: "/admin/control-room/live-stream", label: "📺 إدارة البث" },
                   { href: "/admin/control-room/approval-requests", label: "✅ طابور الموافقات" },
                   { href: "/admin/control-room/activities", label: "📋 سجل العمليات" },
                   { href: "/admin/control-room/smart-alerts", label: "🤖 التنبيهات الذكية" },
