@@ -206,8 +206,8 @@ export default function ControlRoomShell({ children, access }: Props) {
             <Zap className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="font-bold text-sm text-gray-900 dark:text-white">الكنترول روم</p>
-            <p className="text-xs text-gray-400 dark:text-slate-500">داسم</p>
+            <p className="font-bold text-base text-gray-900 dark:text-white">الكنترول روم</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">داسم — مركز القيادة</p>
           </div>
         </div>
       </div>
@@ -219,7 +219,7 @@ export default function ControlRoomShell({ children, access }: Props) {
             {user?.first_name?.[0] ?? user?.name?.[0] ?? "U"}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">
+            <p className="text-base font-semibold text-gray-900 dark:text-slate-100 truncate">
               {user?.first_name
                 ? `${user.first_name} ${user.last_name ?? ""}`.trim()
                 : user?.name ?? user?.email}
@@ -239,15 +239,14 @@ export default function ControlRoomShell({ children, access }: Props) {
           );
           if (visibleItems.length === 0) return null;
           return (
-            <div key={group.title}>
+            <div key={group.title} className="mb-1">
+              <p className="cr-nav-group-title">{group.title}</p>
               <ul className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const Icon = item.icon;
                   const active = !item.external && isActive(item.href);
-                  const linkClass = `flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-sm transition ${
-                    active
-                      ? "bg-blue-50 text-blue-700 font-medium dark:bg-blue-500/15 dark:text-blue-200"
-                      : "text-gray-700 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  const linkClass = `cr-nav-link ${
+                    active ? "cr-nav-link-active" : "cr-nav-link-idle"
                   }`;
 
                   if (item.external) {
@@ -314,9 +313,9 @@ export default function ControlRoomShell({ children, access }: Props) {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-950 rtl flex transition-colors dark:bg-slate-950 dark:text-slate-100">
+    <div className="min-h-screen cr-shell-bg text-gray-950 rtl flex transition-colors dark:bg-slate-950 dark:text-slate-100">
       {/* Sidebar ديسكتوب */}
-      <aside className="hidden md:flex flex-col w-64 bg-white border-l border-gray-200 shrink-0 sticky top-0 h-screen overflow-hidden dark:bg-slate-900 dark:border-slate-800">
+      <aside className="hidden md:flex flex-col w-72 cr-sidebar shrink-0 sticky top-0 h-screen overflow-hidden dark:bg-slate-900 dark:border-slate-800">
         <SidebarContent />
       </aside>
 
@@ -351,10 +350,10 @@ export default function ControlRoomShell({ children, access }: Props) {
         </header>
 
         {/* breadcrumb */}
-        <div className="hidden md:flex items-center gap-1 px-6 py-3 text-xs text-gray-400 border-b border-gray-100 bg-white dark:bg-slate-950 dark:border-slate-800 dark:text-slate-500">
+        <div className="hidden md:flex items-center gap-1 px-6 py-3.5 text-sm text-slate-500 border-b border-slate-200/80 bg-white/80 backdrop-blur dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400">
           <span>الكنترول روم</span>
-          <ChevronLeft className="w-3 h-3" />
-          <span className="text-gray-600 font-medium dark:text-slate-300">
+          <ChevronLeft className="w-3.5 h-3.5" />
+          <span className="text-slate-800 font-semibold dark:text-slate-200">
             {NAV_GROUPS.flatMap((g) => g.items).find((i) => isActive(i.href))?.label ?? "الرئيسية"}
           </span>
         </div>
