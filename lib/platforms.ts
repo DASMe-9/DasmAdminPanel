@@ -85,6 +85,9 @@ export const INTERNAL_LINKS = {
   storesExplore: "https://store.dasm.com.sa/explore",
   storesDashboard: "https://store.dasm.com.sa/dashboard",
 
+  // الإعلانات
+  adsDashboard: "https://ads.dasm.com.sa",
+
   // الشحن
   shippingDashboard: "https://shipping.dasm.com.sa",
 

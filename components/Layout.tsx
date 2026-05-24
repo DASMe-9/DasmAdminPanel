@@ -24,8 +24,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { clearSession, getSession, getUser, getUserDisplayName, isExpired } from '../utils/authStorage';
-
-const DASM_ADS_DASHBOARD_URL = 'https://dasme-ads-laravel.vercel.app/dashboard';
+import { INTERNAL_LINKS } from '../lib/platforms';
 
 export default function Layout({ title, children }: any) {
   const router = useRouter();
@@ -51,7 +50,7 @@ export default function Layout({ title, children }: any) {
       { name: 'شركاء النمو (Mr.20%)', href: '/growth-partners', icon: SparklesIcon },
       { name: 'الباقات والأسعار', href: '/subscriptions', icon: CreditCardIcon },
       { name: 'خصومات المؤسسين', href: '/subscriptions/founder-discounts', icon: GiftIcon },
-      { name: 'لوحة الإعلانات', href: DASM_ADS_DASHBOARD_URL, icon: MegaphoneIcon, external: true },
+      { name: 'لوحة الإعلانات', href: INTERNAL_LINKS.adsDashboard, icon: MegaphoneIcon, external: true },
       { name: 'التقارير', href: '/reports', icon: ChartBarIcon },
       { name: 'الإعدادات', href: '/settings', icon: Cog6ToothIcon },
     ],
