@@ -12,7 +12,7 @@ import {
   X,
   Store,
 } from "lucide-react";
-import ControlRoomGate from "@/components/control-room/ControlRoomGate";
+import ControlRoomGate, { type ControlRoomAccessLevel } from "@/components/control-room/ControlRoomGate";
 import ControlRoomShell from "@/components/control-room/ControlRoomShell";
 import CrPageHeader from "@/components/control-room/CrPageHeader";
 import CrKpiCard from "@/components/control-room/CrKpiCard";
@@ -75,7 +75,8 @@ function formatDate(iso: string) {
   }
 }
 
-function StoreOrdersBody() {
+function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
+  const canUpdateStatus = access === "full";
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [stats, setStats] = useState<OrderStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -87,6 +88,10 @@ function StoreOrdersBody() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<Record<string, unknown> | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [statusDraft, setStatusDraft] = useState("");
+  const [statusNote, setStatusNote] = useState("");
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const authHeaders = (): Record<string, string> => {
     const t = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -128,12 +133,43 @@ function StoreOrdersBody() {
     setSelectedId(id);
     setDetailLoading(true);
     setDetail(null);
+    setStatusError(null);
+    setStatusNote("");
     try {
       const res = await fetch(`/api/stores/orders/${id}`, { headers: authHeaders() });
       const json = await res.json();
-      if (json.status === "success") setDetail(json.data);
+      if (json.status === "success") {
+        setDetail(json.data);
+        setStatusDraft(String(json.data.status ?? "pending"));
+      }
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const saveStatus = async () => {
+    if (!selectedId || !canUpdateStatus) return;
+    setStatusSaving(true);
+    setStatusError(null);
+    try {
+      const res = await fetch(`/api/stores/orders/${selectedId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ status: statusDraft, note: statusNote || undefined }),
+      });
+      const json = await res.json();
+      if (json.status !== "success") {
+        setStatusError(json.message ?? "تعذّر تحديث الحالة");
+        return;
+      }
+      setDetail(json.data);
+      setStatusDraft(String(json.data.status ?? statusDraft));
+      setStatusNote("");
+      void load();
+    } catch {
+      setStatusError("خطأ في الاتصال");
+    } finally {
+      setStatusSaving(false);
     }
   };
 
@@ -147,7 +183,7 @@ function StoreOrdersBody() {
       <CrPageHeader
         icon={ShoppingCart}
         title="طلبات المتاجر"
-        subtitle="لوحة موحّدة للقراءة — كل طلبات store.dasm.com.sa من DASM Core (Phase 1)"
+        subtitle="لوحة موحّدة — طلبات store.dasm.com.sa (Phase 1.1: تحديث الحالة + سجل تدقيق)"
         actions={
           <div className="flex items-center gap-2">
             <Link
@@ -365,7 +401,58 @@ function StoreOrdersBody() {
                     </ul>
                   </div>
                 )}
-                <p className="text-xs text-slate-400 pt-2">عرض للقراءة فقط — تعديل الحالة قادم في Phase 1.1</p>
+                {canUpdateStatus && (
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+                    <p className="font-semibold text-sm">تحديث الحالة</p>
+                    <select
+                      value={statusDraft}
+                      onChange={(e) => setStatusDraft(e.target.value)}
+                      aria-label="حالة الطلب الجديدة"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm dark:border-slate-700 dark:bg-slate-900"
+                    >
+                      {Object.entries(ORDER_STATUS).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="ملاحظة اختيارية (تُسجَّل في audit log)"
+                      value={statusNote}
+                      onChange={(e) => setStatusNote(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm dark:border-slate-700 dark:bg-slate-900"
+                    />
+                    {statusError ? <p className="text-xs text-red-600">{statusError}</p> : null}
+                    <button
+                      type="button"
+                      disabled={statusSaving}
+                      onClick={() => void saveStatus()}
+                      className="w-full rounded-lg bg-emerald-600 text-white py-2 text-sm font-semibold hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      {statusSaving ? "جاري الحفظ…" : "حفظ الحالة"}
+                    </button>
+                  </div>
+                )}
+                {Array.isArray(detail.status_logs) && detail.status_logs.length > 0 && (
+                  <div>
+                    <p className="font-semibold mb-2">سجل تغييرات الحالة</p>
+                    <ul className="space-y-2 text-xs">
+                      {(detail.status_logs as Array<{ from_status?: string; to_status: string; note?: string; created_at: string }>).map(
+                        (log, i) => (
+                          <li key={i} className="border-b border-slate-100 dark:border-slate-700 pb-2">
+                            <span className="font-mono">
+                              {log.from_status ? `${log.from_status} → ` : ""}
+                              {log.to_status}
+                            </span>
+                            {log.note ? <span className="text-slate-500"> — {log.note}</span> : null}
+                            <p className="text-slate-400">{formatDate(log.created_at)}</p>
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-slate-500 text-center py-8">تعذّر تحميل التفاصيل</p>
@@ -382,7 +469,7 @@ export default function ControlRoomStoreOrdersPage() {
     <ControlRoomGate>
       {(access) => (
         <ControlRoomShell access={access}>
-          <StoreOrdersBody />
+          <StoreOrdersBody access={access} />
         </ControlRoomShell>
       )}
     </ControlRoomGate>
