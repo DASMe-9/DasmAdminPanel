@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { ControlRoomAccessLevel } from "./ControlRoomGate";
+import { INTERNAL_LINKS } from "@/lib/platforms";
 
 interface NavItem {
   href: string;
@@ -60,7 +61,6 @@ interface NavItem {
 }
 
 const DASM_BASE = "https://www.dasm.com.sa";
-const DASM_ADS_DASHBOARD_URL = "https://dasme-ads-laravel.vercel.app/dashboard";
 
 const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   // ─── القيادة المركزية ───
@@ -144,7 +144,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "التقارير والإعدادات",
     items: [
-      { href: DASM_ADS_DASHBOARD_URL, label: "لوحة الإعلانات", icon: TrendingUp, fullOnly: true, external: true },
+      { href: INTERNAL_LINKS.adsDashboard, label: "لوحة الإعلانات", icon: TrendingUp, fullOnly: true, external: true },
       { href: "/reports", label: "التقارير", icon: BarChart2, fullOnly: true },
       { href: `${DASM_BASE}/similar-price-analysis`, label: "تحليل الأسعار المشابهة", icon: BarChart3, fullOnly: true, external: true },
       { href: `${DASM_BASE}/admin/security`, label: "مركز الأمان", icon: ShieldAlert, fullOnly: true, external: true },
