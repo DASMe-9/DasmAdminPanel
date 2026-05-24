@@ -13,6 +13,7 @@ import {
   Store,
   Truck,
   Gavel,
+  Download,
 } from "lucide-react";
 import ControlRoomGate, { type ControlRoomAccessLevel } from "@/components/control-room/ControlRoomGate";
 import ControlRoomShell from "@/components/control-room/ControlRoomShell";
@@ -153,6 +154,7 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
   const [statusNote, setStatusNote] = useState("");
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const authHeaders = (): Record<string, string> => {
     const t = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -240,6 +242,37 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
     setDetail(null);
   };
 
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({ channel: channelFilter });
+      if (search) params.set("search", search);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (paymentFilter !== "all") params.set("payment_status", paymentFilter);
+
+      const res = await fetch(`/api/stores/orders/export?${params}`, { headers: authHeaders() });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(typeof err.message === "string" ? err.message : "تعذّر تصدير CSV");
+        return;
+      }
+
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename="?([^";]+)"?/);
+      const filename = match?.[1] ?? `dasm-orders-${Date.now()}.csv`;
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl">
       <CrPageHeader
@@ -255,6 +288,15 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
               <Store className="w-4 h-4" />
               المتاجر
             </Link>
+            <button
+              type="button"
+              onClick={() => void exportCsv()}
+              disabled={exporting || loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            >
+              <Download className={`w-4 h-4 ${exporting ? "animate-pulse" : ""}`} />
+              تصدير CSV
+            </button>
             <button
               type="button"
               onClick={() => void load()}
