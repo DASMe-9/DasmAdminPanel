@@ -19,6 +19,8 @@ export type AuthSession = {
 };
 
 const KEY = 'dasm_admin_session_v1';
+const PLATFORM_AUTH_KEY = 'dasm-platform-auth';
+const PLATFORM_TOKEN_KEY = 'token';
 
 export function setSession(session: AuthSession) {
   if (typeof window === 'undefined') return;
@@ -50,16 +52,27 @@ export function isExpired(session: AuthSession | null) {
 
 export function getToken() {
   const s = getSession();
-  if (!s) return null;
-  if (isExpired(s)) return null;
-  return s.access_token;
+  if (s && !isExpired(s)) return s.access_token;
+  if (typeof window === 'undefined') return null;
+  try {
+    return localStorage.getItem(PLATFORM_TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function getUser() {
   const s = getSession();
-  if (!s) return null;
-  if (isExpired(s)) return null;
-  return s.user;
+  if (s && !isExpired(s)) return s.user;
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(PLATFORM_AUTH_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { state?: { user?: AuthUser | null } };
+    return parsed.state?.user ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function getUserDisplayName(u: AuthUser | null) {
