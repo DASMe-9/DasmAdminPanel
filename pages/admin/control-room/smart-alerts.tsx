@@ -3,6 +3,8 @@ import { AlertTriangle, CheckCircle, Clock, RefreshCw, TrendingUp, Zap, Shield, 
 import dasmBff from "@/lib/dasmBffClient";
 import ControlRoomGate, { type ControlRoomAccessLevel } from "@/components/control-room/ControlRoomGate";
 import ControlRoomShell from "@/components/control-room/ControlRoomShell";
+import CrPageHeader from "@/components/control-room/CrPageHeader";
+import CrKpiCard from "@/components/control-room/CrKpiCard";
 
 type AlertSeverity = "critical" | "high" | "medium" | "low" | "info";
 
@@ -50,7 +52,7 @@ function AlertCard({
   const cfg = SEVERITY_CONFIG[alert.severity];
 
   return (
-    <div className={`bg-white rounded-2xl border ${alert.severity === "critical" ? "border-red-200" : "border-gray-200"} p-4 space-y-3`}>
+    <div className={`cr-panel space-y-3 ${alert.severity === "critical" ? "ring-1 ring-red-200 dark:ring-red-500/30" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2.5 min-w-0">
           <div className={`p-1.5 rounded-lg shrink-0 ${cfg.bg}`}>
@@ -192,45 +194,57 @@ function SmartAlertsBody({ access }: { access: ControlRoomAccessLevel }) {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-amber-600" />
-          <h1 className="text-lg font-bold text-gray-900">التنبيهات الذكية</h1>
-          {criticalCount > 0 && (
-            <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full font-medium animate-pulse">
+      <CrPageHeader
+        icon={Shield}
+        title="التنبيهات الذكية"
+        subtitle="تنبيهات تشغيلية ورؤى AI من DASM Core"
+        meta={
+          criticalCount > 0 ? (
+            <span className="text-xs bg-red-500 text-white px-2 py-1 rounded-full font-semibold animate-pulse">
               {criticalCount} حرج
             </span>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={fetchData}
-          disabled={loading}
-          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
-        >
-          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-          تحديث
-        </button>
-      </div>
+          ) : undefined
+        }
+        actions={
+          <button
+            type="button"
+            onClick={() => void fetchData()}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            تحديث
+          </button>
+        }
+      />
 
-      {/* ملخص سريع */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {Object.entries(SEVERITY_CONFIG)
           .filter(([k]) => k !== "info")
           .map(([sev, cfg]) => {
             const count = openAlerts.filter((a) => a.severity === sev).length;
+            const tone =
+              sev === "critical"
+                ? "red"
+                : sev === "high"
+                ? "amber"
+                : sev === "medium"
+                ? "amber"
+                : "blue";
             return (
-              <div key={sev} className={`rounded-2xl border p-4 ${count > 0 ? "border-current" : "border-gray-200 bg-white"}`}>
-                <p className={`text-2xl font-bold ${cfg.color}`}>{loading ? "—" : count}</p>
-                <p className="text-xs text-gray-500">{cfg.label}</p>
-              </div>
+              <CrKpiCard
+                key={sev}
+                title={cfg.label}
+                value={loading ? "—" : count}
+                icon={AlertTriangle}
+                tone={tone as "red" | "amber" | "blue"}
+                loading={loading}
+              />
             );
           })}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+      <div className="cr-tabs">
         {([
           { id: "open", label: `مفتوحة (${openAlerts.length})` },
           { id: "all", label: "الكل" },
@@ -240,11 +254,7 @@ function SmartAlertsBody({ access }: { access: ControlRoomAccessLevel }) {
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-              activeTab === tab.id
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={`cr-tab ${activeTab === tab.id ? "cr-tab-active" : ""}`}
           >
             {tab.label}
           </button>
@@ -257,7 +267,7 @@ function SmartAlertsBody({ access }: { access: ControlRoomAccessLevel }) {
           {loading ? (
             <div className="text-center py-8 text-sm text-gray-400">جاري تحميل التنبيهات...</div>
           ) : displayedAlerts.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+            <div className="cr-empty">
               <CheckCircle className="w-10 h-10 text-green-400 mx-auto mb-3" />
               <p className="text-sm font-medium text-gray-600">لا توجد تنبيهات {activeTab === "open" ? "مفتوحة" : ""} حالياً</p>
               <p className="text-xs text-gray-400 mt-1">كل شيء يعمل بشكل طبيعي</p>
@@ -282,7 +292,7 @@ function SmartAlertsBody({ access }: { access: ControlRoomAccessLevel }) {
           {loading ? (
             <div className="text-center py-8 text-sm text-gray-400">جاري تحليل البيانات...</div>
           ) : insights.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+            <div className="cr-empty">
               <Zap className="w-10 h-10 text-amber-400 mx-auto mb-3" />
               <p className="text-sm font-medium text-gray-600">لا توجد رؤى ذكية متاحة حالياً</p>
               <p className="text-xs text-gray-400 mt-1">يحتاج النظام بيانات كافية لتوليد التحليلات</p>
@@ -291,7 +301,7 @@ function SmartAlertsBody({ access }: { access: ControlRoomAccessLevel }) {
             insights.map((insight) => {
               const Icon = INSIGHT_ICONS[insight.type] ?? TrendingUp;
               return (
-                <div key={insight.id} className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">
+                <div key={insight.id} className="cr-panel space-y-2">
                   <div className="flex items-start gap-3">
                     <div className="p-2 rounded-xl bg-amber-50 text-amber-600 shrink-0">
                       <Icon className="w-4 h-4" />

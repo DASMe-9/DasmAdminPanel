@@ -20,6 +20,10 @@ import {
 import dasmBff from "@/lib/dasmBffClient";
 import ControlRoomGate, { type ControlRoomAccessLevel } from "@/components/control-room/ControlRoomGate";
 import ControlRoomShell from "@/components/control-room/ControlRoomShell";
+import CrPageHeader from "@/components/control-room/CrPageHeader";
+import CrKpiCard from "@/components/control-room/CrKpiCard";
+import CrStatusPill from "@/components/control-room/CrStatusPill";
+import PlatformPulseBar from "@/components/control-room/PlatformPulseBar";
 
 type AuctionStats = {
   active?: number;
@@ -141,63 +145,6 @@ function eventTone(eventType: string) {
   return "border-sky-200 bg-sky-50 text-sky-700";
 }
 
-function KpiCard({
-  title,
-  value,
-  helper,
-  icon: Icon,
-  tone,
-}: {
-  title: string;
-  value: string | number;
-  helper: string;
-  icon: React.ElementType;
-  tone: "emerald" | "sky" | "amber" | "red";
-}) {
-  const classes = {
-    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    sky: "border-sky-200 bg-sky-50 text-sky-700",
-    amber: "border-amber-200 bg-amber-50 text-amber-700",
-    red: "border-red-200 bg-red-50 text-red-700",
-  };
-
-  return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold text-gray-500">{title}</p>
-          <p className="mt-2 text-2xl font-bold text-gray-950">{value}</p>
-          <p className="mt-1 text-xs text-gray-400">{helper}</p>
-        </div>
-        <div className={`rounded-xl border p-2.5 ${classes[tone]}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function HealthPill({
-  tone,
-  children,
-}: {
-  tone: "live" | "ok" | "warning" | "muted";
-  children: React.ReactNode;
-}) {
-  const classes = {
-    live: "border-red-200 bg-red-50 text-red-700",
-    ok: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    warning: "border-amber-200 bg-amber-50 text-amber-700",
-    muted: "border-gray-200 bg-gray-50 text-gray-600",
-  };
-
-  return (
-    <span className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold ${classes[tone]}`}>
-      {children}
-    </span>
-  );
-}
-
 function MonitoringBody({ access }: { access: ControlRoomAccessLevel }) {
   const [data, setData] = useState<OperationsData>(emptyData);
   const [loading, setLoading] = useState(true);
@@ -289,80 +236,78 @@ function MonitoringBody({ access }: { access: ControlRoomAccessLevel }) {
 
   return (
     <div className="max-w-7xl space-y-6" dir="rtl">
-      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white">
-              <Gavel className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-950">غرفة عمليات المزادات</h1>
-              <p className="text-sm text-gray-500">قراءة تشغيلية مباشرة من DASM Core للمزادات والجلسات وأحداث المزايدات</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <HealthPill tone={stats.stopped > 0 ? "warning" : "live"}>
+      <CrPageHeader
+        icon={Gavel}
+        title="غرفة عمليات المزادات"
+        subtitle="قراءة تشغيلية مباشرة من DASM Core للمزادات والجلسات وأحداث المزايدات"
+        meta={
+          <>
+            <CrStatusPill tone={stats.stopped > 0 ? "warning" : "live"}>
               <Circle className="h-2.5 w-2.5 fill-current" />
               Live
-            </HealthPill>
-            <HealthPill tone={error ? "warning" : "ok"}>
+            </CrStatusPill>
+            <CrStatusPill tone={error ? "warning" : "ok"}>
               <Signal className="h-4 w-4" />
               API {error ? "جزئي" : "سليم"}
-            </HealthPill>
-            <HealthPill tone={activeSessions > 0 ? "ok" : "muted"}>
+            </CrStatusPill>
+            <CrStatusPill tone={activeSessions > 0 ? "ok" : "muted"}>
               <Radio className="h-4 w-4" />
               جلسات نشطة {formatNumber(activeSessions)}
-            </HealthPill>
-            <button
-              type="button"
-              onClick={fetchData}
-              disabled={loading}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              تحديث
-            </button>
-          </div>
-        </div>
+            </CrStatusPill>
+          </>
+        }
+        actions={
+          <button
+            type="button"
+            onClick={() => void fetchData()}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            تحديث
+          </button>
+        }
+        footer={
+          <>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <span>آخر تحديث: {lastRefresh.toLocaleTimeString("ar-SA")}</span>
+              <span>مصادر: المزادات، السيارات، أحداث المزايدات، الجلسات</span>
+              <span>
+                الوصول: {access === "full" ? "كامل" : access === "ops" ? "تشغيلي" : "طابور"}
+              </span>
+            </div>
+            {error ? <p className="cr-alert-warning mt-3">{error}</p> : null}
+          </>
+        }
+      />
 
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-          <span>آخر تحديث: {lastRefresh.toLocaleTimeString("ar-SA")}</span>
-          <span>مصادر حقيقية: المزادات، السيارات، أحداث المزايدات، الجلسات</span>
-          <span>الوصول: {access === "full" ? "كامل" : access === "ops" ? "تشغيلي" : "طابور"}</span>
-        </div>
-
-        {error && (
-          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {error}
-          </div>
-        )}
-      </div>
+      <PlatformPulseBar />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard
+        <CrKpiCard
           title="المزادات النشطة الآن"
           value={loading ? "-" : formatNumber(data.auctions?.active ?? 0)}
           helper={`المجدولة: ${formatNumber(data.auctions?.scheduled ?? data.sessions?.upcoming ?? 0)}`}
           icon={Gavel}
           tone="emerald"
         />
-        <KpiCard
+        <CrKpiCard
           title="السيارات في المزاد"
           value={loading ? "-" : formatNumber(data.cars?.in_auction ?? 0)}
           helper="من مصدر السيارات الإداري"
           icon={Car}
           tone="sky"
         />
-        <KpiCard
+        <CrKpiCard
           title="أحداث المزايدات اليوم"
           value={loading ? "-" : formatNumber(stats.todayEvents)}
           helper={`قبول ${formatNumber(stats.placed)} · رفض ${formatNumber(stats.rejected)} · تلقائي ${formatNumber(stats.auto)}`}
           icon={Gauge}
           tone="amber"
         />
-        <KpiCard
+        <CrKpiCard
           title="مؤشرات تحتاج متابعة"
+          loading={loading}
           value={loading ? "-" : formatNumber(stats.stopped + stats.suspicious)}
           helper={`متوقفة/فاشلة ${formatNumber(stats.stopped)} · اشتباه ${formatNumber(stats.suspicious)}`}
           icon={ShieldAlert}
@@ -371,8 +316,8 @@ function MonitoringBody({ access }: { access: ControlRoomAccessLevel }) {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.45fr,0.9fr]">
-        <section className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+        <section className="cr-panel-flush">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-blue-600" />
               <h2 className="font-bold text-gray-950">تدفق المزايدات المباشر</h2>
@@ -387,7 +332,7 @@ function MonitoringBody({ access }: { access: ControlRoomAccessLevel }) {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
-                <thead className="bg-gray-50 text-xs text-gray-500">
+                <thead className="cr-table-head">
                   <tr>
                     <th className="px-4 py-3 text-right font-semibold">الوقت</th>
                     <th className="px-4 py-3 text-right font-semibold">الحدث</th>
@@ -401,8 +346,8 @@ function MonitoringBody({ access }: { access: ControlRoomAccessLevel }) {
                   {data.recentEvents.slice(0, 12).map((event) => (
                     <tr
                       key={event.id}
-                      className={`cursor-pointer border-t border-gray-100 hover:bg-gray-50 ${
-                        selectedEvent?.id === event.id ? "bg-blue-50/70" : ""
+                      className={`cursor-pointer cr-table-row ${
+                        selectedEvent?.id === event.id ? "bg-blue-50/70 dark:bg-blue-500/10" : ""
                       }`}
                       onClick={() => setSelectedEventId(event.id)}
                     >
@@ -424,11 +369,11 @@ function MonitoringBody({ access }: { access: ControlRoomAccessLevel }) {
           )}
         </section>
 
-        <section className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
+        <section className="cr-panel">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <h2 className="font-bold text-gray-950">قائمة التنبيهات</h2>
+              <h2 className="font-bold text-slate-900 dark:text-white">قائمة التنبيهات</h2>
             </div>
             <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-500">
               {formatNumber(stats.stopped + stats.suspicious)}
@@ -483,10 +428,10 @@ function MonitoringBody({ access }: { access: ControlRoomAccessLevel }) {
       </div>
 
       <section className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
-        <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="cr-panel">
           <div className="mb-4 flex items-center gap-2">
             <Search className="h-4 w-4 text-blue-600" />
-            <h2 className="font-bold text-gray-950">تفاصيل الحدث المحدد</h2>
+            <h2 className="font-bold text-slate-900 dark:text-white">تفاصيل الحدث المحدد</h2>
           </div>
 
           {!selectedEvent ? (
@@ -525,10 +470,10 @@ function MonitoringBody({ access }: { access: ControlRoomAccessLevel }) {
           )}
         </div>
 
-        <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="cr-panel">
           <div className="mb-4 flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4 text-blue-600" />
-            <h2 className="font-bold text-gray-950">إجراءات التحقيق الآمنة</h2>
+            <h2 className="font-bold text-slate-900 dark:text-white">إجراءات التحقيق الآمنة</h2>
           </div>
 
           <div className="grid gap-2 md:grid-cols-2">
@@ -575,11 +520,11 @@ function MonitoringBody({ access }: { access: ControlRoomAccessLevel }) {
       </section>
 
       {canSeeScheduled && (
-        <section className="rounded-3xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+        <section className="cr-panel-flush">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">
             <div className="flex items-center gap-2">
               <Clock3 className="h-4 w-4 text-blue-600" />
-              <h2 className="font-bold text-gray-950">الجلسات النشطة والمجدولة</h2>
+              <h2 className="font-bold text-slate-900 dark:text-white">الجلسات النشطة والمجدولة</h2>
             </div>
             <span className="text-xs text-gray-400">{formatNumber(data.activeScheduledSessions.length)} جلسة</span>
           </div>

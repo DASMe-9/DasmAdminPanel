@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { ClipboardCheck } from "lucide-react";
 import dasmBff from "@/lib/dasmBffClient";
 import { CrButton } from "@/components/ui/cr-button";
 import { CrInput } from "@/components/ui/cr-input";
+import CrPageHeader from "@/components/control-room/CrPageHeader";
 import { toast } from "react-hot-toast";
 import {
   useApprovalCapabilities,
@@ -133,7 +135,7 @@ export default function ApprovalRequestsQueue() {
 
   if (capsErr) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 rtl space-y-3">
+      <div className="cr-alert-error p-6 rtl space-y-3">
         <p>{capsErr}</p>
         <CrButton type="button" variant="outline" onClick={() => refreshCaps()}>
           إعادة المحاولة
@@ -144,7 +146,7 @@ export default function ApprovalRequestsQueue() {
 
   if (caps && !caps.can_access_queue) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900 rtl space-y-2">
+      <div className="cr-alert-warning p-6 rtl space-y-2">
         <p className="font-semibold">لا يمكنك الوصول إلى طابور الموافقات</p>
         <p className="text-sm">
           يجب أن يمنحك DASM صلاحية{" "}
@@ -157,21 +159,18 @@ export default function ApprovalRequestsQueue() {
 
   return (
     <div className="space-y-6 rtl">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            طابور الموافقات التشغيلي
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            المصدر: DASM فقط — لا توجد بيانات محلية للقرارات أو البريد.
-          </p>
-        </div>
-        <CrButton type="button" variant="outline" onClick={() => loadRows()}>
-          تحديث
-        </CrButton>
-      </div>
+      <CrPageHeader
+        icon={ClipboardCheck}
+        title="طابور الموافقات التشغيلي"
+        subtitle="المصدر: DASM فقط — لا توجد بيانات محلية للقرارات أو البريد."
+        actions={
+          <CrButton type="button" variant="outline" onClick={() => void loadRows()}>
+            تحديث
+          </CrButton>
+        }
+      />
 
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="cr-filter-bar">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">تصفية بالحالة (إن وُجدت)</label>
           <select
@@ -196,18 +195,14 @@ export default function ApprovalRequestsQueue() {
         </CrButton>
       </div>
 
-      {listErr ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {listErr}
-        </div>
-      ) : null}
+      {listErr ? <div className="cr-alert-error">{listErr}</div> : null}
 
       {loading ? (
-        <p className="text-gray-500 text-sm">جاري التحميل...</p>
+        <p className="text-slate-500 text-sm">جاري التحميل...</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="cr-table-wrap">
           <table className="w-full text-sm text-right min-w-[900px]">
-            <thead className="bg-gray-100 border-b border-gray-200">
+            <thead className="cr-table-head">
               <tr>
                 <th className="p-3 font-semibold">#</th>
                 <th className="p-3 font-semibold">النوع</th>
@@ -224,7 +219,7 @@ export default function ApprovalRequestsQueue() {
               {rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b border-gray-100 align-top hover:bg-gray-50"
+                  className="cr-table-row align-top"
                 >
                   <td className="p-3">{row.id}</td>
                   <td className="p-3 whitespace-nowrap">{row.request_type}</td>

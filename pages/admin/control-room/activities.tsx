@@ -3,6 +3,7 @@ import { Activity, Clock, Filter, RefreshCw, Search, User } from "lucide-react";
 import dasmBff from "@/lib/dasmBffClient";
 import ControlRoomGate, { type ControlRoomAccessLevel } from "@/components/control-room/ControlRoomGate";
 import ControlRoomShell from "@/components/control-room/ControlRoomShell";
+import CrPageHeader from "@/components/control-room/CrPageHeader";
 
 type PlatformActivity = {
   id: string;
@@ -48,7 +49,7 @@ function ActivityRow({ activity }: { activity: PlatformActivity }) {
   const icon = EVENT_ICONS[activity.event_type] ?? "📌";
 
   return (
-    <tr className="border-b border-gray-100 hover:bg-gray-50 text-sm">
+    <tr className="cr-table-row text-sm">
       <td className="px-4 py-3">
         <span className="text-base">{icon}</span>
       </td>
@@ -125,25 +126,24 @@ function ActivitiesBody({ access }: { access: ControlRoomAccessLevel }) {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-blue-600" />
-          <h1 className="text-lg font-bold text-gray-900">سجل الأنشطة</h1>
-        </div>
-        <button
-          type="button"
-          onClick={() => fetchActivities(1)}
-          disabled={loading}
-          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition"
-        >
-          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-          تحديث
-        </button>
-      </div>
+      <CrPageHeader
+        icon={Activity}
+        title="سجل الأنشطة"
+        subtitle="أحداث المنصات الموثّقة عبر DASM Core"
+        actions={
+          <button
+            type="button"
+            onClick={() => void fetchActivities(1)}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            تحديث
+          </button>
+        }
+      />
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="cr-filter-bar">
         <div className="relative">
           <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -169,11 +169,10 @@ function ActivitiesBody({ access }: { access: ControlRoomAccessLevel }) {
             <option value="control-room">الكنترول روم</option>
           </select>
         </div>
-        <span className="text-xs text-gray-400">{filtered.length} نشاط</span>
+        <span className="text-xs text-slate-400">{filtered.length} نشاط</span>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="cr-panel-flush">
         {loading && activities.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-400">
             <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
@@ -188,7 +187,7 @@ function ActivitiesBody({ access }: { access: ControlRoomAccessLevel }) {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[700px]">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500">
+                  <tr className="cr-table-head text-xs">
                     <th className="px-4 py-3 text-right font-medium w-8"></th>
                     <th className="px-4 py-3 text-right font-medium">المنصة</th>
                     <th className="px-4 py-3 text-right font-medium">الوصف</th>
