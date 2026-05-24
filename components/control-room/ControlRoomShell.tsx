@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Activity,
   ShoppingBag,
+  Package,
   FileText,
   Users,
   ChevronLeft,
@@ -118,6 +119,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: "متاجر داسم",
     items: [
       { href: "/admin/control-room/stores", label: "المتاجر الإلكترونية", icon: ShoppingBag },
+      { href: "/admin/control-room/store-orders", label: "طلبات المتاجر", icon: Package },
     ],
   },
   // ─── المدونة ومجلس السوق ───
