@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import type { AppProps } from "next/app";
 import Script from "next/script";
+import Head from "next/head";
 import { Toaster } from "react-hot-toast";
 import { usePlatformAuthStore } from "@/store/platformAuthStore";
 import platformApi from "@/lib/platformApi";
@@ -37,6 +38,14 @@ function PlatformAuthHydration({ children }: { children: ReactNode }) {
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <PlatformAuthHydration>
+      <Head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </Head>
       <Component {...pageProps} />
       <Toaster position="top-center" />
       {/* DASM Talk widget — unified conversations layer (talk.dasm.com.sa) */}

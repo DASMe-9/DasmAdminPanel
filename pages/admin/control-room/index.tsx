@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import platformApi from "@/lib/platformApi";
-import dasmBff from "@/lib/dasmBffClient";
 import { CrButton } from "@/components/ui/cr-button";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -19,6 +18,11 @@ import {
 } from "lucide-react";
 import ControlRoomGate, { type ControlRoomAccessLevel } from "@/components/control-room/ControlRoomGate";
 import ControlRoomShell from "@/components/control-room/ControlRoomShell";
+import DashboardHero from "@/components/control-room/DashboardHero";
+import PlatformPulseBar from "@/components/control-room/PlatformPulseBar";
+import { fetchDashboardStats, type DashboardStats } from "@/lib/fetchDashboardStats";
+
+const DASM_BASE = "https://www.dasm.com.sa";
 
 /* ─── Types ─── */
 const CAR_TYPES = [
@@ -42,76 +46,174 @@ type CarRow = {
   type?: string;
 };
 
-type Stats = {
-  pending_cars?: number;
-  live_auctions?: number;
-  pending_approvals?: number;
-  active_users?: number;
-  open_alerts?: number;
-  ecommerce_orders?: number;
+type Stats = DashboardStats;
+
+function formatStat(value: number | undefined, loading: boolean) {
+  if (loading) return "…";
+  if (value === undefined || Number.isNaN(value)) return "0";
+  return new Intl.NumberFormat("ar-SA").format(value);
+}
+
+type StatTone = {
+  icon: string;
+  iconDark: string;
+};
+
+const STAT_TONES: Record<string, StatTone> = {
+  amber: {
+    icon: "text-amber-700 bg-amber-100 ring-amber-200/60",
+    iconDark: "dark:text-amber-200 dark:bg-amber-500/15 dark:ring-amber-500/20",
+  },
+  green: {
+    icon: "text-emerald-700 bg-emerald-100 ring-emerald-200/60",
+    iconDark: "dark:text-emerald-200 dark:bg-emerald-500/15 dark:ring-emerald-500/20",
+  },
+  blue: {
+    icon: "text-blue-700 bg-blue-100 ring-blue-200/60",
+    iconDark: "dark:text-blue-200 dark:bg-blue-500/15 dark:ring-blue-500/20",
+  },
+  red: {
+    icon: "text-red-700 bg-red-100 ring-red-200/60",
+    iconDark: "dark:text-red-200 dark:bg-red-500/15 dark:ring-red-500/20",
+  },
+  purple: {
+    icon: "text-purple-700 bg-purple-100 ring-purple-200/60",
+    iconDark: "dark:text-purple-200 dark:bg-purple-500/15 dark:ring-purple-500/20",
+  },
+  indigo: {
+    icon: "text-indigo-700 bg-indigo-100 ring-indigo-200/60",
+    iconDark: "dark:text-indigo-200 dark:bg-indigo-500/15 dark:ring-indigo-500/20",
+  },
 };
 
 /* ─── Overview Stats ─── */
 function OverviewStats({ access }: { access: ControlRoomAccessLevel }) {
-  const [stats, setStats] = useState<Stats>({});
+  const [stats, setStats] = useState<Stats>({
+    pending_cars: 0,
+    live_auctions: 0,
+    pending_approvals: 0,
+    open_alerts: 0,
+    active_sessions: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await dasmBff.get("admin/monitoring/overview");
-      const data = res.data?.data ?? res.data ?? {};
+      const data = await fetchDashboardStats();
       setStats(data);
     } catch {
-      // Stats unavailable — show empty
+      /* keep previous */
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { void fetchStats(); }, [fetchStats]);
+  useEffect(() => {
+    void fetchStats();
+  }, [fetchStats]);
 
-  const cards = [
-    { label: "سيارات بانتظار المراجعة", value: stats.pending_cars, icon: Car, color: "text-amber-600 bg-amber-50", href: "/admin/control-room" },
-    { label: "مزادات حية الآن", value: stats.live_auctions, icon: Radio, color: "text-green-600 bg-green-50", href: "/admin/control-room/monitoring" },
-    { label: "موافقات معلقة", value: stats.pending_approvals, icon: ClipboardList, color: "text-blue-600 bg-blue-50", href: "/admin/control-room/approval-requests" },
-    { label: "تنبيهات مفتوحة", value: stats.open_alerts, icon: AlertTriangle, color: "text-red-600 bg-red-50", href: "/admin/control-room/smart-alerts" },
-    ...(access === "full" ? [
-      { label: "مستخدمون نشطون", value: stats.active_users, icon: Users, color: "text-purple-600 bg-purple-50", href: "/users" },
-      { label: "طلبات التجارة اليوم", value: stats.ecommerce_orders, icon: ShoppingBag, color: "text-indigo-600 bg-indigo-50", href: "/admin/control-room/ecommerce" },
-    ] : []),
+  const cards: Array<{
+    label: string;
+    value: number;
+    icon: typeof Car;
+    tone: keyof typeof STAT_TONES;
+    href: string;
+  }> = [
+    {
+      label: "سيارات بانتظار المراجعة",
+      value: stats.pending_cars,
+      icon: Car,
+      tone: "amber",
+      href: "/admin/control-room",
+    },
+    {
+      label: "مزادات حية الآن",
+      value: stats.live_auctions,
+      icon: Radio,
+      tone: "green",
+      href: "/admin/control-room/monitoring",
+    },
+    {
+      label: "موافقات معلقة",
+      value: stats.pending_approvals,
+      icon: ClipboardList,
+      tone: "blue",
+      href: "/admin/control-room/approval-requests",
+    },
+    {
+      label: "تنبيهات مفتوحة",
+      value: stats.open_alerts,
+      icon: AlertTriangle,
+      tone: "red",
+      href: "/admin/control-room/smart-alerts",
+    },
+    ...(access === "full"
+      ? [
+          {
+            label: "جلسات نشطة",
+            value: stats.active_sessions,
+            icon: Users,
+            tone: "purple" as const,
+            href: `${DASM_BASE}/admin/sessions`,
+          },
+        ]
+      : []),
   ];
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">مؤشرات سريعة</h2>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="cr-section-title">مؤشرات سريعة</h2>
+          <p className="cr-section-sub">أرقام حية من API المنصة — تتحدّث عند الطلب</p>
+        </div>
         <button
           type="button"
           onClick={fetchStats}
           disabled={loading}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
-          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           تحديث
         </button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
         {cards.map((card) => {
           const Icon = card.icon;
-          return (
-            <Link
-              key={card.label}
-              href={card.href}
-              className="bg-white rounded-2xl border border-gray-200 p-4 hover:shadow-md transition group"
-            >
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${card.color}`}>
-                <Icon className="w-5 h-5" />
+          const tone = STAT_TONES[card.tone];
+          const isExternal = card.href.startsWith("http");
+          const inner = (
+            <>
+              <div
+                className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ring-1 ${tone.icon} ${tone.iconDark}`}
+              >
+                <Icon className="h-5 w-5" />
               </div>
-              <p className={`text-2xl font-bold text-gray-900 ${loading ? "animate-pulse" : ""}`}>
-                {loading ? "—" : (card.value ?? "—")}
+              <p className={`cr-stat-value ${loading ? "animate-pulse opacity-70" : ""}`}>
+                {formatStat(card.value, loading)}
               </p>
-              <p className="text-xs text-gray-500 mt-0.5 group-hover:text-gray-700 transition">{card.label}</p>
+              <p className="cr-stat-label mt-1">{card.label}</p>
+            </>
+          );
+
+          if (isExternal) {
+            return (
+              <a
+                key={card.label}
+                href={card.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="cr-stat-card block group"
+              >
+                {inner}
+              </a>
+            );
+          }
+
+          return (
+            <Link key={card.label} href={card.href} className="cr-stat-card block group">
+              {inner}
             </Link>
           );
         })}
@@ -136,23 +238,24 @@ function QuickLinks({ access }: { access: ControlRoomAccessLevel }) {
   ];
 
   return (
-    <div className="space-y-3">
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">الأقسام</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="space-y-4">
+      <div>
+        <h2 className="cr-section-title">الأقسام</h2>
+        <p className="cr-section-sub">اختصارات تشغيلية لأهم غرف العمل</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {links.map((link) => {
           const Icon = link.icon;
           return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="flex items-start gap-3 p-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 hover:shadow-sm transition"
-            >
-              <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
+            <Link key={link.href} href={link.href} className="cr-link-card group">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-700 ring-1 ring-blue-200/60 dark:bg-blue-500/15 dark:text-blue-200 dark:ring-blue-500/20">
                 <Icon className="w-5 h-5" />
               </div>
-              <div>
-                <p className="font-semibold text-sm text-gray-900">{link.label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{link.desc}</p>
+              <div className="min-w-0">
+                <p className="cr-link-title group-hover:text-blue-800 dark:group-hover:text-blue-200">
+                  {link.label}
+                </p>
+                <p className="cr-link-desc">{link.desc}</p>
               </div>
             </Link>
           );
@@ -293,24 +396,26 @@ function DashboardBody({ access }: { access: ControlRoomAccessLevel }) {
   const { isSuperAdmin } = useAuth();
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="space-y-8 max-w-7xl">
+      <DashboardHero />
+      <PlatformPulseBar />
       <OverviewStats access={access} />
       <QuickLinks access={access} />
 
       {/* طابور الموافقات السريع */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">العمليات التشغيلية</h2>
+      <div className="space-y-4">
+        <div>
+          <h2 className="cr-section-title">العمليات التشغيلية</h2>
+          <p className="cr-section-sub">مسارات الموافقات والمراجعة السريعة</p>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Link
-            href="/admin/control-room/approval-requests"
-            className="flex items-start gap-3 p-5 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 transition"
-          >
-            <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+          <Link href="/admin/control-room/approval-requests" className="cr-link-card">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-800 ring-1 ring-amber-200/70 dark:bg-amber-500/15 dark:text-amber-200">
               <ClipboardList className="w-6 h-6" />
             </div>
             <div>
-              <p className="font-bold text-gray-900">طابور الموافقات</p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="cr-link-title">طابور الموافقات</p>
+              <p className="cr-link-desc">
                 حسابات تجارية (تاجر / مالك معرض / مستثمر) وطلبات صلاحيات مجلس السوق
               </p>
             </div>
@@ -318,14 +423,14 @@ function DashboardBody({ access }: { access: ControlRoomAccessLevel }) {
           {isSuperAdmin && (
             <Link
               href="/admin/control-room/approval-group"
-              className="flex items-start gap-3 p-5 rounded-2xl border border-blue-200 bg-blue-50 hover:bg-blue-100 transition"
+              className="cr-link-card border-blue-200/80 bg-blue-50/50 dark:border-blue-500/30 dark:bg-blue-500/5"
             >
-              <div className="p-2 rounded-xl bg-blue-100 text-blue-800">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-800 ring-1 ring-blue-200/70 dark:bg-blue-500/15 dark:text-blue-200">
                 <UserCog className="w-6 h-6" />
               </div>
               <div>
-                <p className="font-bold text-gray-900">مجموعة الموافقات</p>
-                <p className="text-sm text-gray-500 mt-1">إدارة الأعضاء والقدرات (مدير النظام فقط)</p>
+                <p className="cr-link-title">مجموعة الموافقات</p>
+                <p className="cr-link-desc">إدارة الأعضاء والقدرات (مدير النظام فقط)</p>
               </div>
             </Link>
           )}
