@@ -77,7 +77,7 @@ export const PLATFORMS: Platform[] = [
 export const INTERNAL_LINKS = {
   // داسم الرئيسية
   dasmAdmin: "https://www.dasm.com.sa/admin",
-  dasmControlRoom: "https://www.dasm.com.sa/admin/control-room",
+  dasmControlRoom: "https://control.dasm.com.sa/admin/control-room",
   dasmSecurityCenter: "https://www.dasm.com.sa/admin/security",
   dasmMonitoring: "https://www.dasm.com.sa/admin/monitoring",
 
