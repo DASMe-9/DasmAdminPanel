@@ -233,7 +233,7 @@ function QuickLinks({ access }: { access: ControlRoomAccessLevel }) {
     { href: "/admin/control-room/smart-alerts", label: "التنبيهات الذكية", icon: AlertTriangle, desc: "تحليل المخاطر والشذوذ" },
     ...(access === "full" ? [
       { href: "/reports", label: "التقارير", icon: TrendingUp, desc: "تقارير الأداء والمبيعات" },
-      { href: "/users", label: "المستخدمون", icon: Users, desc: "إدارة المستخدمين والأدوار" },
+      { href: "/admin/control-room/users", label: "المستخدمون", icon: Users, desc: "إدارة المستخدمين والأدوار" },
     ] : []),
   ];
 
