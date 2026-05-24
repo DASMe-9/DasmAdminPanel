@@ -12,6 +12,7 @@ import {
   X,
   Store,
   Truck,
+  Gavel,
 } from "lucide-react";
 import ControlRoomGate, { type ControlRoomAccessLevel } from "@/components/control-room/ControlRoomGate";
 import ControlRoomShell from "@/components/control-room/ControlRoomShell";
@@ -19,7 +20,7 @@ import CrPageHeader from "@/components/control-room/CrPageHeader";
 import CrKpiCard from "@/components/control-room/CrKpiCard";
 import CrStatusPill from "@/components/control-room/CrStatusPill";
 
-type OrderChannel = "store" | "shipping";
+type OrderChannel = "store" | "shipping" | "auction";
 
 type OrderRow = {
   id: number;
@@ -34,6 +35,7 @@ type OrderRow = {
   created_at: string;
   read_only?: boolean;
   store?: { id: number; name: string; name_ar?: string; slug: string; status?: string };
+  auction?: { id?: number; status?: string };
   shipping?: {
     provider_code?: string;
     service_name?: string;
@@ -52,6 +54,8 @@ type OrderStats = {
   store_orders?: number;
   shipping_orders?: number;
   shipping_revenue?: number;
+  auction_orders?: number;
+  auction_revenue?: number;
 };
 
 type Paginated = {
@@ -73,6 +77,14 @@ const ORDER_STATUS: Record<string, string> = {
 const CHANNEL_LABEL: Record<OrderChannel, string> = {
   store: "متجر",
   shipping: "شحن",
+  auction: "مزاد",
+};
+
+const AUCTION_STATUS: Record<string, string> = {
+  pending: "قيد التسوية",
+  completed: "مكتملة",
+  cancelled: "ملغاة",
+  disputed: "نزاع",
 };
 
 const SHIPPING_STATUS: Record<string, string> = {
@@ -97,7 +109,16 @@ function statusLabel(order: OrderRow) {
   if (order.channel === "shipping") {
     return SHIPPING_STATUS[order.status] ?? order.status;
   }
+  if (order.channel === "auction") {
+    return AUCTION_STATUS[order.status] ?? order.status;
+  }
   return ORDER_STATUS[order.status] ?? order.status;
+}
+
+function channelTone(channel: OrderChannel): "info" | "ok" | "live" {
+  if (channel === "shipping") return "info";
+  if (channel === "auction") return "live";
+  return "ok";
 }
 
 function formatSar(v: string | number) {
@@ -224,7 +245,7 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
       <CrPageHeader
         icon={ShoppingCart}
         title="طلبات موحّدة"
-        subtitle="متاجر داسم + شحن (M1.2) — قراءة موحّدة مع تحديث حالة طلبات المتاجر فقط"
+        subtitle="متاجر داسم + شحن + مزادات (M1.3) — قراءة موحّدة مع تحديث حالة طلبات المتاجر فقط"
         actions={
           <div className="flex items-center gap-2">
             <Link
@@ -251,18 +272,33 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           <CrKpiCard title="إجمالي الطلبات" value={stats.total_orders} icon={Package} tone="indigo" loading={loading} />
           <CrKpiCard title="اليوم" value={stats.orders_today} icon={Clock} tone="blue" loading={loading} />
-          {channelFilter !== "shipping" && (
+          {channelFilter !== "shipping" && channelFilter !== "auction" && (
             <CrKpiCard title="متاجر — مدفوعة" value={stats.paid_count} icon={CreditCard} tone="emerald" loading={loading} />
           )}
-          {channelFilter !== "shipping" && (
+          {channelFilter !== "shipping" && channelFilter !== "auction" && (
             <CrKpiCard title="بانتظار الدفع" value={stats.pending_payment} icon={ShoppingCart} tone="amber" loading={loading} />
           )}
           {channelFilter !== "store" && typeof stats.shipping_orders === "number" && (
             <CrKpiCard title="طلبات شحن" value={stats.shipping_orders} icon={Truck} tone="blue" loading={loading} />
           )}
+          {channelFilter !== "store" && channelFilter !== "shipping" && typeof stats.auction_orders === "number" && (
+            <CrKpiCard title="تسويات مزاد" value={stats.auction_orders} icon={Gavel} tone="purple" loading={loading} />
+          )}
           <CrKpiCard
-            title={channelFilter === "shipping" ? "إيراد الشحن" : "إيراد مدفوع"}
-            value={formatSar(channelFilter === "shipping" ? (stats.shipping_revenue ?? stats.paid_revenue) : stats.paid_revenue)}
+            title={
+              channelFilter === "shipping"
+                ? "إيراد الشحن"
+                : channelFilter === "auction"
+                  ? "إيراد المزادات"
+                  : "إيراد مدفوع"
+            }
+            value={formatSar(
+              channelFilter === "shipping"
+                ? (stats.shipping_revenue ?? stats.paid_revenue)
+                : channelFilter === "auction"
+                  ? (stats.auction_revenue ?? stats.paid_revenue)
+                  : stats.paid_revenue
+            )}
             icon={TrendingUp}
             tone="purple"
             loading={loading}
@@ -283,6 +319,7 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
           <option value="all">كل المصادر</option>
           <option value="store">متاجر داسم</option>
           <option value="shipping">شحن</option>
+          <option value="auction">مزادات</option>
         </select>
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -368,7 +405,7 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
                     onClick={() => void openDetail(order.id, channel)}
                   >
                     <td className="px-4 py-3">
-                      <CrStatusPill tone={channel === "shipping" ? "info" : "ok"}>
+                      <CrStatusPill tone={channelTone(channel)}>
                         {CHANNEL_LABEL[channel]}
                       </CrStatusPill>
                     </td>
@@ -377,7 +414,11 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-slate-900 dark:text-white">
-                        {channel === "store" ? order.store?.name ?? "—" : order.shipping?.provider_code ?? "شحن داسم"}
+                        {channel === "store"
+                          ? order.store?.name ?? "—"
+                          : channel === "auction"
+                            ? `مزاد #${order.auction?.id ?? order.id}`
+                            : order.shipping?.provider_code ?? "شحن داسم"}
                       </p>
                       {channel === "store" && order.store?.slug ? (
                         <p className="text-xs text-slate-400">/{order.store.slug}</p>
@@ -471,6 +512,23 @@ function StoreOrdersBody({ access }: { access: ControlRoomAccessLevel }) {
                 <p>
                   <span className="text-slate-500">العميل:</span> {String(detail.customer_name)} — {String(detail.customer_phone)}
                 </p>
+                {selectedChannel === "auction" && (
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-1">
+                    <p className="font-semibold">تفاصيل التسوية (قراءة فقط)</p>
+                    {detail.auction_id ? <p>المزاد: #{String(detail.auction_id)}</p> : null}
+                    {detail.escrow_payment_status ? (
+                      <p>
+                        Escrow: <span className="font-mono">{String(detail.escrow_payment_status)}</span>
+                      </p>
+                    ) : null}
+                    {detail.escrow_release_status ? (
+                      <p>
+                        الإفراج: <span className="font-mono">{String(detail.escrow_release_status)}</span>
+                      </p>
+                    ) : null}
+                    {detail.seller_name ? <p>البائع: {String(detail.seller_name)}</p> : null}
+                  </div>
+                )}
                 {selectedChannel === "shipping" && (
                   <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-1">
                     <p className="font-semibold">تفاصيل الشحن</p>
