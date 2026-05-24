@@ -41,7 +41,7 @@ export default function Layout({ title, children }: any) {
       { name: 'المستخدمين', href: '/users', icon: UserGroupIcon },
       { name: 'إدارة الموظفين', href: '/employees', icon: UserPlusIcon },
       { name: 'تأمين بلس', href: '/insurance-plus', icon: ShieldCheckIcon },
-      { name: 'المتاجر الإلكترونية', href: '/showroom-dashboard', icon: BuildingStorefrontIcon },
+      { name: 'المتاجر الإلكترونية', href: '/admin/control-room/stores', icon: BuildingStorefrontIcon },
       { name: 'Buyer-to-Seller Broadcast', href: '/broadcast', icon: MegaphoneIcon },
       { name: 'Seller-to-Buyer Broadcast', href: '/seller-broadcast', icon: MegaphoneIcon },
       { name: 'عروض مخصصة', href: '/buyer-notifications', icon: BellIcon },

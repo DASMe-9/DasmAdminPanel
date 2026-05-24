@@ -117,8 +117,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "متاجر داسم",
     items: [
-      { href: "/admin/control-room/stores", label: "مراقبة المتاجر", icon: ShoppingBag },
-      { href: "/admin/control-room/ecommerce", label: "إحصائيات المتاجر", icon: ShoppingBag },
+      { href: "/admin/control-room/stores", label: "المتاجر الإلكترونية", icon: ShoppingBag },
     ],
   },
   // ─── المدونة ومجلس السوق ───
