@@ -20,11 +20,12 @@ const API_BASE_URL = `${BACKEND_URL}/api`;
  * لو عندك Bearer Token (اختياري)
  */
 const TOKEN_KEY = 'dasm_admin_token';
+const PLATFORM_TOKEN_KEY = 'token';
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    return localStorage.getItem(TOKEN_KEY) || localStorage.getItem(PLATFORM_TOKEN_KEY);
   } catch {
     return null;
   }
