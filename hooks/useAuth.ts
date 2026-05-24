@@ -1,5 +1,6 @@
 import { usePlatformAuthStore } from "@/store/platformAuthStore";
 import { UserRole } from "@/types/userRole";
+import { normalizeUserType } from "@/lib/normalizeUserType";
 
 export function useAuth() {
   const {
@@ -16,22 +17,23 @@ export function useAuth() {
     initializeFromStorage,
   } = usePlatformAuthStore();
 
+  const userType = normalizeUserType(user?.type);
   const isAdmin =
-    user?.type === UserRole.ADMIN || user?.type === UserRole.SUPER_ADMIN;
-  const isModerator = user?.type === UserRole.MODERATOR;
-  const isOperator = user?.type === UserRole.OPERATOR;
+    userType === UserRole.ADMIN || userType === UserRole.SUPER_ADMIN;
+  const isModerator = userType === UserRole.MODERATOR;
+  const isOperator = userType === UserRole.OPERATOR;
   // طاقم الكنترول روم = أدمن + مشرف + مشغّل + مبرمج
   const isControlRoomStaff =
     isAdmin ||
     isModerator ||
     isOperator ||
-    user?.type === UserRole.PROGRAMMER;
+    userType === UserRole.PROGRAMMER;
 
   return {
     user,
     isAdmin,
-    isSuperAdmin: user?.type === UserRole.SUPER_ADMIN,
-    isProgrammer: user?.type === UserRole.PROGRAMMER,
+    isSuperAdmin: userType === UserRole.SUPER_ADMIN,
+    isProgrammer: userType === UserRole.PROGRAMMER,
     isModerator,
     isOperator,
     isControlRoomStaff,

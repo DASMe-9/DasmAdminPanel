@@ -5,13 +5,23 @@ import { useRouter } from "next/router";
 import { useAuth } from "@/hooks/useAuth";
 
 /**
- * نقطة الجذر: لا تعيد التوجيه إلى لوحة قديمة.
- * غير مسجّل → /auth/login | مسجّل → الكنترول روم الرسمي.
+ * نقطة الجذر: بوابة الدخول الرسمية أولاً.
+ * غير مسجّل أو جلسة غير مكتملة → /auth/login
+ * طاقم كنترول روم مؤكّد → /admin/control-room (لوحة المراقبة)
  */
 export default function Home() {
   const router = useRouter();
-  const { hydrated, initialized, isLoggedIn, initializeFromStorage } =
-    useAuth();
+  const {
+    hydrated,
+    initialized,
+    isLoading,
+    isLoggedIn,
+    token,
+    user,
+    isControlRoomStaff,
+    initializeFromStorage,
+    logout,
+  } = useAuth();
   const incomingSsoToken =
     typeof router.query.sso_token === "string"
       ? router.query.sso_token
@@ -41,12 +51,40 @@ export default function Home() {
   useEffect(() => {
     if (hasSsoToken) return;
     if (!hydrated || !initialized) return;
-    if (!isLoggedIn) {
+
+    // لا توكن → صفحة الدخول (الخطوة الأولى المتوقعة)
+    if (!token || !isLoggedIn) {
       router.replace("/auth/login");
       return;
     }
-    router.replace("/admin/control-room");
-  }, [hasSsoToken, hydrated, initialized, isLoggedIn, router]);
+
+    // توكن بدون بروفايل: انتظر أو نظّف الجلسة
+    if (!user) {
+      if (isLoading) return;
+      void logout({ skipRequest: true, redirectToLogin: true });
+      return;
+    }
+
+    // طاقم staff مؤكّد → لوحة المراقبة
+    if (isControlRoomStaff) {
+      router.replace("/admin/control-room");
+      return;
+    }
+
+    // باقي الأدوار: يمرّون ببوابة الدخول التي تتحقق من طابور الموافقات
+    router.replace("/auth/login");
+  }, [
+    hasSsoToken,
+    hydrated,
+    initialized,
+    isLoading,
+    token,
+    isLoggedIn,
+    user,
+    isControlRoomStaff,
+    router,
+    logout,
+  ]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 text-sm">

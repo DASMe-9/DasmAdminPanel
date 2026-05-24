@@ -5,9 +5,9 @@ import dasmBff from "@/lib/dasmBffClient";
 
 type GateState =
   | "loading"
-  | "allowed_full"   // أدمن / مشرف / مبرمج — كامل الصلاحيات
-  | "allowed_ops"    // مشغّل — صلاحيات محدودة
-  | "allowed_queue"  // مراجع خارجي يملك can_access_queue
+  | "allowed_full" // أدمن / مشرف / مبرمج — كامل الصلاحيات
+  | "allowed_ops" // مشغّل — صلاحيات محدودة
+  | "allowed_queue" // مراجع خارجي يملك can_access_queue
   | "forbidden"
   | "error"
   | "redirect_login";
@@ -20,14 +20,35 @@ interface ControlRoomGateProps {
 
 export default function ControlRoomGate({ children }: ControlRoomGateProps) {
   const router = useRouter();
-  const { hydrated, token, isAdmin, isModerator, isProgrammer, isOperator } = useAuth();
+  const {
+    hydrated,
+    initialized,
+    isLoading,
+    token,
+    user,
+    isAdmin,
+    isModerator,
+    isProgrammer,
+    isOperator,
+    logout,
+  } = useAuth();
   const isFullStaff = isAdmin || isModerator || isProgrammer;
 
   const [gateState, setGateState] = useState<GateState>("loading");
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !initialized) return;
+
+    // انتظر انتهاء جلب البروفايل قبل أي قرار (تجنّب 403 مؤقت لطاقم staff)
+    if (token && !user && isLoading) return;
+
+    // توكن بدون بروفايل بعد التهيئة = جلسة منتهية أو تالفة
+    if (token && !user) {
+      void logout({ skipRequest: true, redirectToLogin: true });
+      setGateState("redirect_login");
+      return;
+    }
 
     // أدمن / مشرف / مبرمج → دخول كامل
     if (isFullStaff) {
@@ -63,12 +84,18 @@ export default function ControlRoomGate({ children }: ControlRoomGateProps) {
         setGateState(ok ? "allowed_queue" : "forbidden");
       } catch (e: unknown) {
         if (cancelled) return;
-        const status = (e as { response?: { status?: number } })?.response?.status;
+        const status = (e as { response?: { status?: number } })?.response
+          ?.status;
         if (status === 401) {
           setGateState("redirect_login");
           router.replace(
             "/auth/login?returnUrl=" + encodeURIComponent(router.asPath)
           );
+          return;
+        }
+        // 403 = لا صلاحية (ليس خطأ شبكة)
+        if (status === 403) {
+          setGateState("forbidden");
           return;
         }
         setGateState("error");
@@ -79,9 +106,18 @@ export default function ControlRoomGate({ children }: ControlRoomGateProps) {
       cancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, isFullStaff, isOperator, token, retryKey]);
+  }, [
+    hydrated,
+    initialized,
+    isLoading,
+    user,
+    isFullStaff,
+    isOperator,
+    token,
+    retryKey,
+  ]);
 
-  if (!hydrated || gateState === "loading") {
+  if (!hydrated || !initialized || gateState === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-500 text-sm rtl p-6">
         <div className="text-center space-y-3">
@@ -113,6 +149,13 @@ export default function ControlRoomGate({ children }: ControlRoomGateProps) {
         >
           إعادة المحاولة
         </button>
+        <button
+          type="button"
+          className="text-sm text-blue-600 underline"
+          onClick={() => void logout({ redirectToLogin: true })}
+        >
+          تسجيل الدخول من جديد
+        </button>
       </div>
     );
   }
@@ -120,10 +163,13 @@ export default function ControlRoomGate({ children }: ControlRoomGateProps) {
   if (gateState === "forbidden") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 rtl p-6 text-center max-w-lg mx-auto">
-        <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center text-2xl mx-auto">🔒</div>
+        <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center text-2xl mx-auto">
+          🔒
+        </div>
         <p className="text-lg font-semibold text-amber-900">غير مصرّح</p>
         <p className="text-amber-800 text-sm leading-relaxed">
-          لا تملك صلاحية الدخول إلى الكنترول روم. تواصل مع مدير داسم للحصول على الوصول.
+          لا تملك صلاحية الدخول إلى الكنترول روم. تواصل مع مدير داسم للحصول على
+          الوصول.
         </p>
         <button
           type="button"
