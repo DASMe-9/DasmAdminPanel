@@ -97,7 +97,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: "السيارات والمزادات",
     items: [
       { href: `${DASM_BASE}/admin/cars`, label: "السيارات", icon: Car, fullOnly: true, external: true },
-      { href: `${DASM_BASE}/admin/auctions`, label: "المزادات", icon: Gavel, fullOnly: true, external: true },
+      { href: "/admin/control-room/auctions", label: "إدارة المزادات", icon: Gavel, fullOnly: true },
       { href: `${DASM_BASE}/admin/pending-approvals`, label: "القوائم المعلقة", icon: Clock, fullOnly: true, external: true },
     ],
   },
@@ -105,9 +105,9 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "الجلسات والبث",
     items: [
-      { href: "/admin/control-room/stream-management", label: "إدارة شات البث", icon: MessageSquare },
+      { href: "/admin/control-room/stream-management", label: "ضبط البث والشات", icon: MessageSquare },
       { href: `${DASM_BASE}/admin/sessions`, label: "إدارة الجلسات", icon: Calendar, fullOnly: true, external: true },
-      { href: `${DASM_BASE}/admin/live-stream`, label: "إدارة البث", icon: Tv2, fullOnly: true, external: true },
+      { href: "/admin/control-room/live-stream", label: "إدارة البث", icon: Tv2, fullOnly: true },
       { href: `${DASM_BASE}/admin/youtube-channels`, label: "قنوات YouTube", icon: Youtube, fullOnly: true, external: true },
       { href: `${DASM_BASE}/admin/live-market-staging`, label: "تغذية الحراج المباشر", icon: Radio, fullOnly: true, external: true },
       { href: `${DASM_BASE}/auctions/auctions-1main/live-market`, label: "الحراج المباشر", icon: Radio, fullOnly: true, external: true },

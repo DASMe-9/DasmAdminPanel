@@ -107,7 +107,7 @@ type CfStatus = "idle" | "checking" | "connected" | "not_connected" | "error";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function LiveStream() {
+export function LiveStreamPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -380,7 +380,6 @@ export default function LiveStream() {
   };
 
   return (
-    <Layout>
       <div className="min-h-screen bg-gray-50/60 p-4 sm:p-6 lg:p-8" dir="rtl">
         <div className="mx-auto max-w-6xl space-y-6">
           {/* Header */}
@@ -649,6 +648,13 @@ export default function LiveStream() {
           </div>
         </div>
       </div>
+  );
+}
+
+export default function LiveStream() {
+  return (
+    <Layout>
+      <LiveStreamPanel />
     </Layout>
   );
 }
