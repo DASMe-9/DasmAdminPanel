@@ -26,6 +26,15 @@ import { INTERNAL_LINKS } from "@/lib/platforms";
 
 const STORES_BASE = "https://store.dasm.com.sa";
 
+type ImportSummary = {
+  provider: string;
+  connected?: boolean;
+  last_sync_at?: string | null;
+  last_sync_status?: string | null;
+  last_sync_message?: string | null;
+  external_name?: string | null;
+};
+
 type StoreRow = {
   id: number;
   name: string;
@@ -37,6 +46,7 @@ type StoreRow = {
   orders_count: number;
   created_at: string;
   owner?: { first_name: string; last_name: string; email: string };
+  import_summary?: ImportSummary[];
 };
 
 type Stats = {
@@ -45,6 +55,7 @@ type Stats = {
   total_orders: number;
   orders_today: number;
   total_revenue: number;
+  salla_connected?: number;
 };
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
@@ -52,6 +63,39 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Ch
   draft: { label: "مسودة", color: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200", icon: Clock },
   suspended: { label: "موقوف", color: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-200", icon: Ban },
 };
+
+function sallaSummary(store: StoreRow): ImportSummary | undefined {
+  return store.import_summary?.find((c) => c.provider === "salla");
+}
+
+function sallaBadge(store: StoreRow): { label: string; color: string; title?: string } {
+  const salla = sallaSummary(store);
+  if (!salla?.connected) {
+    return { label: "غير مربوط", color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400" };
+  }
+  if (salla.last_sync_status === "failed") {
+    return {
+      label: "متصل — فشل sync",
+      color: "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-200",
+      title: salla.last_sync_message ?? undefined,
+    };
+  }
+  if (salla.last_sync_status === "partial") {
+    return {
+      label: "متصل — sync جزئي",
+      color: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200",
+      title: salla.last_sync_message ?? undefined,
+    };
+  }
+  if (salla.last_sync_at) {
+    return {
+      label: "متصل بسلة",
+      color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200",
+      title: salla.last_sync_message ?? undefined,
+    };
+  }
+  return { label: "متصل بسلة", color: "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200" };
+}
 
 const OWNER_TYPE_MAP: Record<string, string> = {
   venue_owner: "معرض",
@@ -126,8 +170,8 @@ const ECOSYSTEM = [
   },
   {
     title: "استيراد Salla / Shopify",
-    body: "مزامنة منتجات من منصات خارجية — قيد التخطيط.",
-    status: "planned" as const,
+    body: "OAuth + استيراد منتجات — Salla live؛ Shopify لاحقاً (M4).",
+    status: "live" as const,
   },
 ];
 
@@ -246,6 +290,14 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
           <CrKpiCard title="موقوفة" value={stats.by_status?.suspended ?? 0} icon={Ban} tone="red" loading={loading} />
           <CrKpiCard title="طلبات اليوم" value={stats.orders_today} icon={ShoppingCart} tone="blue" loading={loading} />
           <CrKpiCard
+            title="متصل بسلة"
+            value={stats.salla_connected ?? 0}
+            helper="متاجر OAuth"
+            icon={Link2}
+            tone="emerald"
+            loading={loading}
+          />
+          <CrKpiCard
             title="إجمالي الإيرادات"
             value={`${((stats.total_revenue ?? 0) / 1000).toFixed(1)}k`}
             helper="ر.س — من API المتاجر"
@@ -359,6 +411,7 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
                 <th className="px-4 py-3 text-right font-semibold">المتجر</th>
                 <th className="px-4 py-3 text-right font-semibold">المالك</th>
                 <th className="px-4 py-3 text-right font-semibold">الحالة</th>
+                <th className="px-4 py-3 text-right font-semibold">Salla</th>
                 <th className="px-4 py-3 text-right font-semibold">منتجات</th>
                 <th className="px-4 py-3 text-right font-semibold">طلبات</th>
                 <th className="px-4 py-3 text-right font-semibold">أُنشئ</th>
@@ -370,6 +423,7 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
               {displayed.map((store) => {
                 const s = STATUS_MAP[store.status] ?? STATUS_MAP.draft;
                 const Icon = s.icon;
+                const salla = sallaBadge(store);
                 const storefront = `${STORES_BASE}/store/${store.slug}`;
                 return (
                   <tr key={store.id} className="cr-table-row">
@@ -394,6 +448,15 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${s.color}`}>
                         <Icon className="w-3 h-3" />
                         {s.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${salla.color}`}
+                        title={salla.title}
+                      >
+                        <Link2 className="w-3 h-3" />
+                        {salla.label}
                       </span>
                     </td>
                     <td className="px-4 py-3">
