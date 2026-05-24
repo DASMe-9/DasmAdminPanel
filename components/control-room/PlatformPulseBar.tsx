@@ -1,21 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 import { PLATFORMS } from "@/lib/platforms";
-
-type HealthStatus = "online" | "degraded" | "offline" | "checking";
-
-type PlatformHealth = {
-  id: string;
-  status: HealthStatus;
-  latency?: number;
-};
+import { usePlatformHealth, type HealthStatus } from "@/hooks/usePlatformHealth";
 
 const STATUS_DOT: Record<HealthStatus, string> = {
   online: "bg-emerald-500",
   degraded: "bg-amber-400",
   offline: "bg-red-500",
-  checking: "bg-slate-300 animate-pulse",
+  checking: "bg-slate-300 animate-pulse dark:bg-slate-600",
 };
 
 const STATUS_LABEL: Record<HealthStatus, string> = {
@@ -25,45 +17,12 @@ const STATUS_LABEL: Record<HealthStatus, string> = {
   checking: "فحص…",
 };
 
-async function probePlatform(
-  p: (typeof PLATFORMS)[number]
-): Promise<PlatformHealth> {
-  const start = Date.now();
-  try {
-    const endpoint =
-      p.id === "control"
-        ? p.url
-        : `${p.apiUrl.replace(/\/$/, "")}/api/health`;
-    const resp = await fetch(endpoint, { signal: AbortSignal.timeout(8000) });
-    return {
-      id: p.id,
-      status: resp.ok ? "online" : "degraded",
-      latency: Date.now() - start,
-    };
-  } catch {
-    return { id: p.id, status: "offline", latency: Date.now() - start };
-  }
+interface PlatformPulseBarProps {
+  showCommandLink?: boolean;
 }
 
-export default function PlatformPulseBar() {
-  const [health, setHealth] = useState<PlatformHealth[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    const external = PLATFORMS.filter((p) => p.id !== "control");
-    const results = await Promise.all(external.map(probePlatform));
-    setHealth(results);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-    const id = window.setInterval(() => void refresh(), 60_000);
-    return () => window.clearInterval(id);
-  }, [refresh]);
-
-  const onlineCount = health.filter((h) => h.status === "online").length;
+export default function PlatformPulseBar({ showCommandLink = true }: PlatformPulseBarProps) {
+  const { health, loading, refresh, onlineCount } = usePlatformHealth();
 
   return (
     <section className="cr-pulse-bar">
@@ -77,12 +36,14 @@ export default function PlatformPulseBar() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/admin/control-room/command-center"
-            className="text-sm font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-200"
-          >
-            مركز القيادة ←
-          </Link>
+          {showCommandLink ? (
+            <Link
+              href="/admin/control-room/command-center"
+              className="text-sm font-semibold text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-200"
+            >
+              مركز القيادة ←
+            </Link>
+          ) : null}
           <button
             type="button"
             onClick={() => void refresh()}
@@ -127,3 +88,5 @@ export default function PlatformPulseBar() {
     </section>
   );
 }
+
+export { usePlatformHealth };
