@@ -132,19 +132,79 @@ function SmartAlertsBody({ access }: { access: ControlRoomAccessLevel }) {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [alertsRes, insightsRes] = await Promise.allSettled([
-        dasmBff.get("admin/alerts"),
-        dasmBff.get("admin/analytics/ai-insights"),
-      ]);
+      const res = await dasmBff.get("admin/monitoring/summary");
+      const root = res.data?.data ?? res.data ?? {};
 
-      if (alertsRes.status === "fulfilled") {
-        const d = alertsRes.value.data?.data ?? alertsRes.value.data ?? [];
-        setAlerts(Array.isArray(d) ? d : d.alerts ?? []);
+      const rawAlerts = [
+        ...(Array.isArray(root.active_alerts) ? root.active_alerts : []),
+        ...(Array.isArray(root.recent_alerts) ? root.recent_alerts : []),
+      ] as Array<Record<string, unknown>>;
+
+      const seen = new Set<number>();
+      const mapped: SmartAlert[] = [];
+      for (const a of rawAlerts) {
+        const id = Number(a.id);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        const severity = String(a.severity ?? "medium") as AlertSeverity;
+        const statusRaw = String(a.status ?? "active");
+        mapped.push({
+          id: String(id),
+          title: String(a.title_ar ?? a.alert_type ?? "تنبيه"),
+          description: String(a.reason_ar ?? ""),
+          severity: ["critical", "high", "medium", "low", "info"].includes(severity)
+            ? severity
+            : "medium",
+          category: String(a.alert_type ?? "monitoring"),
+          status:
+            statusRaw === "active"
+              ? "open"
+              : statusRaw === "acknowledged"
+              ? "acknowledged"
+              : statusRaw === "resolved"
+              ? "resolved"
+              : "open",
+          created_at: String(a.started_at ?? a.last_seen_at ?? new Date().toISOString()),
+        });
       }
-      if (insightsRes.status === "fulfilled") {
-        const d = insightsRes.value.data?.data ?? insightsRes.value.data ?? [];
-        setInsights(Array.isArray(d) ? d : d.insights ?? []);
+      setAlerts(mapped);
+
+      const incidents = Array.isArray(root.incidents) ? root.incidents : [];
+      const hints = Array.isArray(root.correlation_hints) ? root.correlation_hints : [];
+      const triage = root.guided_triage;
+      const derived: AiInsight[] = [];
+
+      for (const inc of incidents.slice(0, 5)) {
+        derived.push({
+          id: `inc-${String((inc as Record<string, unknown>).at ?? derived.length)}`,
+          type: "anomaly",
+          title: String((inc as Record<string, unknown>).message_ar ?? "حادث"),
+          body: `مستوى: ${String((inc as Record<string, unknown>).level ?? "—")}`,
+          confidence: 90,
+          generated_at: String((inc as Record<string, unknown>).at ?? new Date().toISOString()),
+        });
       }
+      for (const h of hints.slice(0, 3)) {
+        derived.push({
+          id: `hint-${derived.length}`,
+          type: "recommendation",
+          title: String((h as Record<string, unknown>).title_ar ?? "تلميح تشغيلي"),
+          body: String((h as Record<string, unknown>).detail_ar ?? ""),
+          confidence: 75,
+          generated_at: new Date().toISOString(),
+        });
+      }
+      if (triage && typeof triage === "object") {
+        derived.push({
+          id: "triage",
+          type: "recommendation",
+          title: "توجيه triage",
+          body: String((triage as Record<string, unknown>).summary_ar ?? JSON.stringify(triage)),
+          confidence: 80,
+          generated_at: new Date().toISOString(),
+        });
+      }
+      setInsights(derived);
     } catch {
       // keep state
     } finally {
@@ -156,7 +216,10 @@ function SmartAlertsBody({ access }: { access: ControlRoomAccessLevel }) {
 
   const handleAcknowledge = async (alertId: string) => {
     try {
-      await dasmBff.post(`admin/alerts/${alertId}/acknowledge`, {});
+      await dasmBff.post("admin/monitoring/alert-action", {
+        alert_id: Number(alertId),
+        action: "acknowledge",
+      });
       setAlerts((prev) =>
         prev.map((a) => (a.id === alertId ? { ...a, status: "acknowledged" as const } : a))
       );
@@ -167,7 +230,10 @@ function SmartAlertsBody({ access }: { access: ControlRoomAccessLevel }) {
 
   const handleResolve = async (alertId: string) => {
     try {
-      await dasmBff.post(`admin/alerts/${alertId}/resolve`, {});
+      await dasmBff.post("admin/monitoring/alert-action", {
+        alert_id: Number(alertId),
+        action: "resolve",
+      });
       setAlerts((prev) =>
         prev.map((a) => (a.id === alertId ? { ...a, status: "resolved" as const } : a))
       );
@@ -197,7 +263,7 @@ function SmartAlertsBody({ access }: { access: ControlRoomAccessLevel }) {
       <CrPageHeader
         icon={Shield}
         title="التنبيهات الذكية"
-        subtitle="تنبيهات تشغيلية ورؤى AI من DASM Core"
+        subtitle="تنبيهات production monitoring + triage من admin/monitoring/summary"
         meta={
           criticalCount > 0 ? (
             <span className="text-xs bg-red-500 text-white px-2 py-1 rounded-full font-semibold animate-pulse">

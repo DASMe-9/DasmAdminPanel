@@ -27,7 +27,7 @@ function isPathAllowed(subPath: string, method: string): boolean {
   if (subPath.startsWith("admin/cars")) return true;
 
   // المراقبة الحية
-  if (subPath.startsWith("admin/monitoring")) return method === "GET";
+  if (subPath.startsWith("admin/monitoring")) return true;
   if (subPath.startsWith("admin/live-auctions")) return method === "GET";
   if (subPath.startsWith("admin/auctions")) return method === "GET";
   if (subPath.startsWith("admin/bids/events")) return method === "GET";
@@ -38,8 +38,15 @@ function isPathAllowed(subPath: string, method: string): boolean {
   if (subPath.startsWith("admin/activity-logs")) return method === "GET";
   if (subPath.startsWith("admin/audit-logs")) return method === "GET";
 
-  // المستخدمون (قراءة فقط من الكنترول روم)
-  if (subPath.startsWith("admin/users") && method === "GET") return true;
+  // المستخدمون — قراءة + حذف super_admin عبر Core guard
+  if (subPath.startsWith("admin/users")) {
+    if (method === "GET") return true;
+    if (method === "DELETE" && /^admin\/users\/\d+$/.test(subPath)) return true;
+    return false;
+  }
+
+  // آراء المستخدمين (Control Room inbox)
+  if (subPath.startsWith("admin/platform-feedback")) return true;
 
   // بروفايل المستخدم الحالي
   if (subPath === "user/profile") return method === "GET";

@@ -97,7 +97,20 @@ function ActivitiesBody({ access }: { access: ControlRoomAccessLevel }) {
       if (platformFilter !== "all") params.set("platform", platformFilter);
       const res = await dasmBff.get(`admin/platform-activities?${params}`);
       const d = res.data?.data ?? res.data ?? {};
-      const items: PlatformActivity[] = Array.isArray(d) ? d : d.activities ?? d.data ?? [];
+      const rawItems = Array.isArray(d) ? d : d.data ?? [];
+      const items: PlatformActivity[] = (rawItems as Array<Record<string, unknown>>).map((a) => ({
+        id: String(a.id),
+        platform: String(a.platform ?? "dasm"),
+        event_type: String(a.event_type ?? ""),
+        actor_id: a.user && typeof a.user === "object" ? Number((a.user as Record<string, unknown>).id) : undefined,
+        actor_name:
+          a.user && typeof a.user === "object"
+            ? String((a.user as Record<string, unknown>).name ?? "")
+            : undefined,
+        description: String(a.summary ?? a.description ?? ""),
+        metadata: (a.metadata as Record<string, unknown>) ?? undefined,
+        created_at: String(a.occurred_at ?? a.created_at ?? new Date().toISOString()),
+      }));
 
       if (p === 1) {
         setActivities(items);
