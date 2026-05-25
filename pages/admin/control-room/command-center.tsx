@@ -5,6 +5,7 @@ import { ControlRoomGate } from "@/components/control-room/ControlRoomGate";
 import CrPageHeader from "@/components/control-room/CrPageHeader";
 import PlatformPulseBar from "@/components/control-room/PlatformPulseBar";
 import CrInfrastructureStrip from "@/components/control-room/CrInfrastructureStrip";
+import CrLiveOpsSnapshot from "@/components/control-room/CrLiveOpsSnapshot";
 import { INTERNAL_LINKS, PLATFORMS } from "@/lib/platforms";
 import { usePlatformHealth } from "@/hooks/usePlatformHealth";
 
@@ -68,6 +69,7 @@ function CommandCenterBody() {
 
       <PlatformPulseBar showCommandLink={false} />
       <CrInfrastructureStrip />
+      <CrLiveOpsSnapshot />
 
       <section className="cr-panel">
         <h2 className="cr-section-title mb-4">روابط سريعة — لوحات المراقبة</h2>
@@ -103,6 +105,8 @@ function CommandCenterBody() {
                   { href: "/admin/control-room/auctions", label: "⚖️ إدارة المزادات" },
                   { href: "/admin/control-room/live-stream", label: "📺 إدارة البث" },
                   { href: "/admin/control-room/approval-requests", label: "✅ طابور الموافقات" },
+                  { href: "/admin/control-room/user-feedback", label: "💬 آراء المستخدمين" },
+                  { href: "/admin/control-room/users-status", label: "👥 حالة الجلسات" },
                   { href: "/admin/control-room/activities", label: "📋 سجل العمليات" },
                   { href: "/admin/control-room/smart-alerts", label: "🤖 التنبيهات الذكية" },
                 ].map((item) => (

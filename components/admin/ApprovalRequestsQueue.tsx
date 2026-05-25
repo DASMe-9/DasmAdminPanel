@@ -5,6 +5,7 @@ import dasmBff from "@/lib/dasmBffClient";
 import { CrButton } from "@/components/ui/cr-button";
 import { CrInput } from "@/components/ui/cr-input";
 import CrPageHeader from "@/components/control-room/CrPageHeader";
+import ApprovalAuditSmokePanel from "@/components/approval/ApprovalAuditSmokePanel";
 import { toast } from "react-hot-toast";
 import {
   useApprovalCapabilities,
@@ -196,6 +197,8 @@ export default function ApprovalRequestsQueue() {
       </div>
 
       {listErr ? <div className="cr-alert-error">{listErr}</div> : null}
+
+      <ApprovalAuditSmokePanel />
 
       {loading ? (
         <p className="text-slate-500 text-sm">جاري التحميل...</p>
