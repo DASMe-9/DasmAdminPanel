@@ -38,12 +38,15 @@ function isPathAllowed(subPath: string, method: string): boolean {
   if (subPath.startsWith("admin/activity-logs")) return method === "GET";
   if (subPath.startsWith("admin/audit-logs")) return method === "GET";
 
-  // المستخدمون — قراءة + حذف super_admin عبر Core guard
+  // المستخدمون — قراءة وإجراءات تشغيلية فقط. الحذف محصور في لوحة DASM Core.
   if (subPath.startsWith("admin/users")) {
     if (method === "GET") return true;
-    if (method === "DELETE" && /^admin\/users\/\d+$/.test(subPath)) return true;
+    if (method === "POST" && /^admin\/users\/\d+\/(activate|reject|toggle-status)$/.test(subPath)) return true;
     return false;
   }
+
+  if (method === "POST" && /^admin\/dealers\/\d+\/approve-verification$/.test(subPath)) return true;
+  if (method === "POST" && /^admin-panel\/users\/\d+\/verify-email$/.test(subPath)) return true;
 
   // آراء المستخدمين (Control Room inbox)
   if (subPath.startsWith("admin/platform-feedback")) return true;
