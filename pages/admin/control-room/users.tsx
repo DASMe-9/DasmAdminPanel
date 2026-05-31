@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  BadgeCheck,
+  CheckCircle2,
   ExternalLink,
+  Eye,
   RefreshCw,
   Search,
   Users,
   Activity,
-  Trash2,
-  AlertTriangle,
+  ShieldOff,
+  XCircle,
 } from "lucide-react";
 import dasmBff from "@/lib/dasmBffClient";
-import { useAuth } from "@/hooks/useAuth";
 import ControlRoomGate, { type ControlRoomAccessLevel } from "@/components/control-room/ControlRoomGate";
 import ControlRoomShell from "@/components/control-room/ControlRoomShell";
 import CrPageHeader from "@/components/control-room/CrPageHeader";
@@ -29,6 +31,7 @@ type UserRow = {
   type?: string;
   status?: string;
   is_active?: boolean;
+  email_verified_at?: string | null;
   created_at?: string;
 };
 
@@ -68,7 +71,6 @@ function extractMeta(payload: unknown): UsersMeta | null {
 }
 
 function UsersBody({ access }: { access: ControlRoomAccessLevel }) {
-  const { isSuperAdmin } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [meta, setMeta] = useState<UsersMeta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,7 @@ function UsersBody({ access }: { access: ControlRoomAccessLevel }) {
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [processingId, setProcessingId] = useState<number | null>(null);
   const searchTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -123,29 +125,94 @@ function UsersBody({ access }: { access: ControlRoomAccessLevel }) {
     void loadUsers(1);
   }, [access, loadUsers]);
 
-  const handleDelete = async (u: UserRow) => {
-    if (!isSuperAdmin) return;
-    if (u.type === "super_admin") {
-      toast.error("لا يمكن حذف مدير النظام الرئيسي");
+  const updateUserInList = (updated: UserRow) => {
+    setUsers((prev) => prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)));
+  };
+
+  const handleVerifyEmail = async (u: UserRow) => {
+    if (!u.email) {
+      toast.error("لا يوجد بريد إلكتروني لهذا المستخدم");
       return;
     }
-    const ok = window.confirm(
-      `حذف المستخدم #${u.id} (${displayName(u)})؟\n\nهذا إجراء نهائي — متاح لـ super_admin فقط.`
-    );
+    const ok = window.confirm(`توثيق بريد "${u.email}" يدوياً؟`);
     if (!ok) return;
 
-    setDeletingId(u.id);
+    setProcessingId(u.id);
     try {
-      await dasmBff.delete(`admin/users/${u.id}`);
-      toast.success("تم حذف المستخدم");
-      await loadUsers(page);
+      await dasmBff.post(`admin-panel/users/${u.id}/verify-email`);
+      updateUserInList({ ...u, email_verified_at: new Date().toISOString() });
+      toast.success("تم توثيق البريد");
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "تعذر حذف المستخدم";
+        "تعذر توثيق البريد";
       toast.error(msg);
     } finally {
-      setDeletingId(null);
+      setProcessingId(null);
+    }
+  };
+
+  const handleToggleStatus = async (u: UserRow) => {
+    if (u.type === "super_admin") {
+      toast.error("حساب super_admin محمي");
+      return;
+    }
+    const next = !u.is_active;
+    const ok = window.confirm(`${next ? "تفعيل" : "تعطيل"} المستخدم #${u.id} (${displayName(u)})؟`);
+    if (!ok) return;
+
+    setProcessingId(u.id);
+    try {
+      await dasmBff.post(`admin/users/${u.id}/toggle-status`, { is_active: next });
+      updateUserInList({
+        ...u,
+        is_active: next,
+        status: next ? "active" : "rejected",
+      });
+      toast.success(next ? "تم تفعيل المستخدم" : "تم تعطيل المستخدم");
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "تعذر تغيير حالة المستخدم";
+      toast.error(msg);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDecision = async (u: UserRow, action: "activate" | "reject") => {
+    if (u.type === "super_admin") return;
+    const ok = window.confirm(`${action === "activate" ? "اعتماد" : "رفض"} المستخدم #${u.id} (${displayName(u)})؟`);
+    if (!ok) return;
+
+    setProcessingId(u.id);
+    try {
+      await dasmBff.post(`admin/users/${u.id}/${action}`);
+      await loadUsers(page);
+      toast.success(action === "activate" ? "تم اعتماد المستخدم" : "تم رفض المستخدم");
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "تعذر تنفيذ الإجراء";
+      toast.error(msg);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleApproveDealerVerification = async (u: UserRow) => {
+    setProcessingId(u.id);
+    try {
+      await dasmBff.post(`admin/dealers/${u.id}/approve-verification`);
+      await loadUsers(page);
+      toast.success("تم اعتماد التحقق للتاجر");
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "تعذر اعتماد التحقق";
+      toast.error(msg);
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -165,7 +232,7 @@ function UsersBody({ access }: { access: ControlRoomAccessLevel }) {
       <CrPageHeader
         icon={Users}
         title="إدارة المستخدمين"
-        subtitle="قراءة وتصفية من DASM Core — الحذف لـ super_admin فقط"
+        subtitle="قراءة وتصفية وإجراءات تشغيلية من DASM Core — الحذف محصور في لوحة داسم الرئيسية"
         actions={
           <>
             <Link
@@ -196,16 +263,6 @@ function UsersBody({ access }: { access: ControlRoomAccessLevel }) {
           </>
         }
       />
-
-      {isSuperAdmin && (
-        <div className="cr-alert-warning flex items-start gap-2 text-sm">
-          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-          <span>
-            حذف الحسابات متاح لـ <strong>super_admin</strong> فقط ويمر عبر BFF إلى DASM Core مع{" "}
-            <code className="text-xs">super_admin.guard</code>.
-          </span>
-        </div>
-      )}
 
       <div className="cr-filter-bar flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
@@ -263,7 +320,7 @@ function UsersBody({ access }: { access: ControlRoomAccessLevel }) {
                 <th className="px-4 py-3 font-semibold">النوع</th>
                 <th className="px-4 py-3 font-semibold">الحالة</th>
                 <th className="px-4 py-3 font-semibold">التسجيل</th>
-                {isSuperAdmin ? <th className="px-4 py-3 font-semibold">إجراء</th> : null}
+                <th className="px-4 py-3 font-semibold">إجراء</th>
               </tr>
             </thead>
             <tbody>
@@ -279,23 +336,86 @@ function UsersBody({ access }: { access: ControlRoomAccessLevel }) {
                   <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">
                     {u.created_at ? new Date(u.created_at).toLocaleDateString("ar-SA") : "—"}
                   </td>
-                  {isSuperAdmin ? (
-                    <td className="px-4 py-3">
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <a
+                        href={`${DASM_BASE}/admin/users/${u.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        title="عرض التفاصيل في لوحة داسم"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        عرض
+                      </a>
+
+                      {!u.email_verified_at ? (
+                        <button
+                          type="button"
+                          disabled={processingId === u.id}
+                          onClick={() => void handleVerifyEmail(u)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-500/40 dark:text-blue-200 dark:hover:bg-blue-500/10"
+                          title="توثيق البريد يدوياً"
+                        >
+                          <BadgeCheck className="h-3.5 w-3.5" />
+                          توثيق
+                        </button>
+                      ) : null}
+
+                      {u.status === "pending" ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={processingId === u.id}
+                            onClick={() => void handleDecision(u, "activate")}
+                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-500/40 dark:text-emerald-200 dark:hover:bg-emerald-500/10"
+                            title="اعتماد المستخدم"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            اعتماد
+                          </button>
+                          <button
+                            type="button"
+                            disabled={processingId === u.id}
+                            onClick={() => void handleDecision(u, "reject")}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-500/40 dark:text-red-200 dark:hover:bg-red-500/10"
+                            title="رفض المستخدم"
+                          >
+                            <XCircle className="h-3.5 w-3.5" />
+                            رفض
+                          </button>
+                        </>
+                      ) : null}
+
+                      {u.type === "dealer" && u.status === "pending" ? (
+                        <button
+                          type="button"
+                          disabled={processingId === u.id}
+                          onClick={() => void handleApproveDealerVerification(u)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 px-2 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50 dark:border-indigo-500/40 dark:text-indigo-200 dark:hover:bg-indigo-500/10"
+                          title="اعتماد تحقق التاجر"
+                        >
+                          <BadgeCheck className="h-3.5 w-3.5" />
+                          تحقق
+                        </button>
+                      ) : null}
+
                       {u.type !== "super_admin" ? (
                         <button
                           type="button"
-                          disabled={deletingId === u.id}
-                          onClick={() => void handleDelete(u)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          disabled={processingId === u.id}
+                          onClick={() => void handleToggleStatus(u)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-500/40 dark:text-amber-200 dark:hover:bg-amber-500/10"
+                          title={u.is_active ? "تعطيل المستخدم" : "تفعيل المستخدم"}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          {deletingId === u.id ? "…" : "حذف"}
+                          <ShieldOff className="h-3.5 w-3.5" />
+                          {u.is_active ? "تعطيل" : "تفعيل"}
                         </button>
                       ) : (
                         <span className="text-xs text-slate-400">محمي</span>
                       )}
-                    </td>
-                  ) : null}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
