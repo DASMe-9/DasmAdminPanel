@@ -275,8 +275,9 @@ function PendingCarsSection() {
   const fetchPendingCars = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await platformApi.get("/api/admin/cars/pending");
-      setCars(res.data);
+      const res = await platformApi.get("/api/admin/live-market-staging/pending-cars");
+      const payload = res.data as { data?: CarRow[] };
+      setCars(Array.isArray(payload?.data) ? payload.data : []);
     } catch {
       setCars([]);
     } finally {
@@ -288,13 +289,19 @@ function PendingCarsSection() {
 
   const handleApprove = async (carId: number) => {
     const type = carTypes[carId] || "luxury";
-    await platformApi.post("/api/admin/cars/approve", { id: carId, type, market: "instant" });
+    await platformApi.post("/api/admin/live-market-staging/approve-to-instant", {
+      id: carId,
+      type,
+      market: "instant",
+    });
     void fetchPendingCars();
   };
 
   const handleMoveToLiveMarket = async () => {
     if (selectedCars.length === 0) return;
-    await platformApi.post("/api/admin/cars/move-to-live-market", { carIds: selectedCars });
+    await platformApi.post("/api/admin/live-market-staging/move-selected-to-live", {
+      car_ids: selectedCars,
+    });
     void fetchPendingCars();
     setSelectedCars([]);
   };
