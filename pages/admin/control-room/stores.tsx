@@ -24,7 +24,7 @@ import CrPageHeader from "@/components/control-room/CrPageHeader";
 import CrKpiCard from "@/components/control-room/CrKpiCard";
 import { INTERNAL_LINKS } from "@/lib/platforms";
 
-const STORES_BASE = "https://store.dasm.com.sa";
+const STORES_BASE = "https://stores.dasm.com.sa";
 
 type ImportSummary = {
   provider: string;
@@ -36,7 +36,7 @@ type ImportSummary = {
 };
 
 type StoreRow = {
-  id: number;
+  id: string;
   name: string;
   name_ar?: string;
   slug: string;
@@ -67,9 +67,9 @@ type ImportReadinessData = {
     store_import_connections?: boolean;
     store_pos_integrations?: boolean;
   };
-  cheerlylife?: { id: number; slug: string; status: string; owner_type?: string } | null;
+  cheerlylife?: { id: string; slug: string; status: string; owner_type?: string } | null;
   pilot_store?: {
-    id: number;
+    id: string;
     slug: string;
     status: string;
     owner_type?: string;
@@ -170,7 +170,7 @@ const QUICK_LINKS = [
 const ECOSYSTEM = [
   {
     title: "Storefront SaaS",
-    body: "متجر لكل معرض/تاجر على store.dasm.com.sa — واجهة عربية، SEO، وسلة مشتريات.",
+    body: "متجر لكل معرض/تاجر على stores.dasm.com.sa — واجهة عربية، SEO، وسلة مشتريات.",
     status: "live" as const,
   },
   {
@@ -210,7 +210,7 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setFilter] = useState("all");
-  const [actionBusy, setBusy] = useState<number | null>(null);
+  const [actionBusy, setBusy] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "draft">("all");
 
   const authHeaders = (): Record<string, string> => {
@@ -254,7 +254,7 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
     void loadReadiness();
   }, [load, loadReadiness]);
 
-  const doAction = async (id: number, action: "suspend" | "activate") => {
+  const doAction = async (id: string, action: "suspend" | "activate") => {
     const label = action === "activate" ? "تفعيل" : "تعليق";
     if (!confirm(`${label} المتجر؟`)) return;
     setBusy(id);
@@ -277,7 +277,7 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
       <CrPageHeader
         icon={Store}
         title="مركز متاجر داسم"
-        subtitle="إدارة المتاجر الحقيقية على store.dasm.com.sa — ربط، تفعيل، مراقبة، وخدمات الدفع والشحن"
+        subtitle="إدارة المتاجر الحقيقية على stores.dasm.com.sa — ربط، تفعيل، مراقبة، وخدمات الدفع والشحن"
         actions={
           <button
             type="button"
@@ -553,7 +553,7 @@ function StoresBody({ access }: { access: ControlRoomAccessLevel }) {
                 const s = STATUS_MAP[store.status] ?? STATUS_MAP.draft;
                 const Icon = s.icon;
                 const salla = sallaBadge(store);
-                const storefront = `${STORES_BASE}/store/${store.slug}`;
+                const storefront = `${STORES_BASE}/${store.slug}`;
                 return (
                   <tr key={store.id} className="cr-table-row">
                     <td className="px-4 py-3">
